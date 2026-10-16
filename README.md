@@ -37,9 +37,12 @@ Allows hundreds of users to securely access the platform simultaneously, upload 
   - **Global Languages:** English, Spanish, French, German, Arabic, Chinese, Japanese, Korean, Portuguese, Russian, Italian, Turkish, Dutch, Vietnamese, Indonesian, Thai, Persian, Hebrew, and more.
 - **Unicode & Script Direction:** Preserves native typography and automatically enables Right-to-Left (RTL) mode for Arabic and Urdu.
 
-### 5. 🎬 Next-Gen Studio & Dialogue Tracking
-- **Inside-Video Subtitles (No Black Box):** Subtitles are rendered directly over the video canvas with drop-shadows and configurable vertical alignment.
-- **Live Dialogue Tracker:** Real-time conversational dialogue stream highlighting currently spoken speech synchronized with playback.
+### 5. 🎬 Next-Gen Studio & Subtitle Auto-Tracking Engine
+- **Synchronized Subtitle Auto-Tracking:** 60 FPS playhead synchronization ensures in-video subtitles and timeline cards follow speech with zero latency.
+- **Kinetic Karaoke Word Highlighting:** Dynamic word-level tracking highlights the active spoken word with vibrant neon cyan illumination and scale effects.
+- **Smooth Auto-Scroll Centering:** `getBoundingClientRect()` relative scroll tracking automatically keeps the active spoken line centered in the Dialogue Tracker and Timeline Editor.
+- **Inside-Video Subtitles (No Black Box):** Subtitles are rendered directly inside the video viewport with crisp outlines and transparent background options.
+- **Continuous Timeline Continuity:** Full timeline subtitle generation ensures synchronized subtitles track seamlessly from 00:00 to the very end of playback without running out.
 - **Timeline Editor with Undo / Redo:** Full history stack for editing segments, splitting, merging, timing shifting, and text updates.
 - **Multilingual Translation:** Instant side-by-side translation with track switching (Original Spoken vs Translated).
 - **Hardware-Accelerated Burn-in:** Backend FFmpeg burns custom ASS subtitles directly into MP4 files for instant social media distribution.
