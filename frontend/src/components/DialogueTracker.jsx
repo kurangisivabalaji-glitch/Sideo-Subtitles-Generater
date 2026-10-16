@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { 
   MessageSquare, 
   Play, 
@@ -9,7 +9,9 @@ import {
   Sparkles,
   ArrowRight,
   Eye,
-  EyeOff
+  EyeOff,
+  LocateFixed,
+  Radio
 } from 'lucide-react';
 import { formatDisplayTime, formatPreciseTime } from '../utils/timeUtils';
 
@@ -51,28 +53,33 @@ export function DialogueTracker({
     }
   }
 
+  const scrollToActive = useCallback((force = false) => {
+    if (activeDialogueRef.current && containerRef.current) {
+      if (isUserScrollingRef.current && !force) return;
+      const container = containerRef.current;
+      const element = activeDialogueRef.current;
+      const targetTop = element.offsetTop - (container.clientHeight / 2) + (element.clientHeight / 2);
+      container.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
+    }
+  }, []);
+
   // Auto-scroll when active dialogue changes
   useEffect(() => {
     if (!autoScroll || !activeSegment || isUserScrollingRef.current) return;
 
     if (activeSegment.id !== lastActiveIdRef.current) {
       lastActiveIdRef.current = activeSegment.id;
-
-      if (activeDialogueRef.current && containerRef.current) {
-        const container = containerRef.current;
-        const element = activeDialogueRef.current;
-        const targetTop = element.offsetTop - (container.clientHeight / 2) + (element.clientHeight / 2);
-        container.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
-      }
+      scrollToActive();
     }
-  }, [activeSegment?.id, autoScroll]);
+  }, [activeSegment?.id, autoScroll, scrollToActive]);
 
   const handleWheel = () => {
     isUserScrollingRef.current = true;
     if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
     scrollTimeoutRef.current = setTimeout(() => {
       isUserScrollingRef.current = false;
-    }, 3500);
+      if (autoScroll) scrollToActive();
+    }, 1800);
   };
 
   const filteredSegments = segments.filter(seg => 
@@ -174,7 +181,37 @@ export function DialogueTracker({
                 lineHeight: 1.5,
                 wordBreak: 'break-word'
               }}>
-                {activeSegment.text}
+                {(() => {
+                  const rawText = activeSegment.text || '';
+                  const words = rawText.split(' ');
+                  if (words.length <= 1) return rawText;
+                  const segDur = Math.max(0.01, activeSegment.end - activeSegment.start);
+                  const elapsed = Math.max(0, currentTime - activeSegment.start);
+                  const ratio = Math.min(1, elapsed / segDur);
+                  const activeWordIdx = Math.min(words.length - 1, Math.floor(ratio * words.length));
+
+                  return words.map((w, wIdx) => {
+                    const isCurrentWord = wIdx === activeWordIdx;
+                    return (
+                      <span
+                        key={wIdx}
+                        style={{
+                          margin: '0 3px',
+                          display: 'inline-block',
+                          color: isCurrentWord ? '#22d3ee' : '#ffffff',
+                          background: isCurrentWord ? 'rgba(34, 211, 238, 0.2)' : 'transparent',
+                          borderRadius: '4px',
+                          padding: isCurrentWord ? '0 4px' : '0',
+                          boxShadow: isCurrentWord ? '0 0 10px rgba(34, 211, 238, 0.4)' : 'none',
+                          transform: isCurrentWord ? 'scale(1.04)' : 'scale(1)',
+                          transition: 'all 0.08s ease'
+                        }}
+                      >
+                        {w}
+                      </span>
+                    );
+                  });
+                })()}
               </div>
 
               {/* Progress bar inside active segment */}
@@ -231,7 +268,7 @@ export function DialogueTracker({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        gap: '12px',
+        gap: '10px',
         background: 'rgba(0, 0, 0, 0.2)'
       }}>
         <div style={{ position: 'relative', flex: 1 }}>
@@ -253,18 +290,39 @@ export function DialogueTracker({
           />
         </div>
 
-        <button
-          onClick={() => setAutoScroll(!autoScroll)}
-          className={`btn ${autoScroll ? 'btn-soft-cyan' : 'btn-soft-amber'}`}
-          style={{
-            fontSize: '0.8rem',
-            padding: '6px 12px'
-          }}
-          title={autoScroll ? 'Auto-scroll follows video speech' : 'Auto-scroll paused'}
-        >
-          {autoScroll ? <Eye size={13} color="#22d3ee" /> : <EyeOff size={13} color="#fbbf24" />}
-          <span>{autoScroll ? 'Tracking ON' : 'Tracking Paused'}</span>
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <button
+            onClick={() => {
+              setAutoScroll(true);
+              isUserScrollingRef.current = false;
+              scrollToActive(true);
+            }}
+            className="btn btn-soft-cyan"
+            style={{
+              fontSize: '0.78rem',
+              padding: '6px 10px',
+              gap: '5px'
+            }}
+            title="Snap immediately to currently spoken dialogue"
+          >
+            <LocateFixed size={13} color="#22d3ee" />
+            <span>Snap to Speech</span>
+          </button>
+
+          <button
+            onClick={() => setAutoScroll(!autoScroll)}
+            className={`btn ${autoScroll ? 'btn-soft-emerald' : 'btn-soft-amber'}`}
+            style={{
+              fontSize: '0.78rem',
+              padding: '6px 10px',
+              gap: '5px'
+            }}
+            title={autoScroll ? 'Auto-scroll is following video speech' : 'Auto-scroll paused'}
+          >
+            {autoScroll ? <Eye size={13} color="#34d399" /> : <EyeOff size={13} color="#fbbf24" />}
+            <span>{autoScroll ? 'Auto-Track: ON' : 'Auto-Track: OFF'}</span>
+          </button>
+        </div>
       </div>
 
       {/* 3. Continuous Dialogue Script Stream (Conversational Layout) */}

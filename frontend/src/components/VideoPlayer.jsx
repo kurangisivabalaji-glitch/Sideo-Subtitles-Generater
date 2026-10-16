@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { 
   Play, 
   Pause, 
@@ -8,9 +8,11 @@ import {
   VolumeX, 
   Maximize, 
   Subtitles, 
-  Gauge
+  Gauge,
+  LocateFixed,
+  Radio
 } from 'lucide-react';
-import { formatDisplayTime } from '../utils/timeUtils';
+import { formatDisplayTime, formatPreciseTime } from '../utils/timeUtils';
 
 function formatVttTimestamp(seconds) {
   if (isNaN(seconds) || seconds < 0) seconds = 0;
@@ -33,12 +35,14 @@ export function VideoPlayer({
 }) {
   const containerRef = useRef(null);
   const videoViewportRef = useRef(null);
+  const animFrameRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [showSubtitles, setShowSubtitles] = useState(true);
+  const [autoTracking, setAutoTracking] = useState(true);
   const [activeSegment, setActiveSegment] = useState(null);
   const [activeSegmentIndex, setActiveSegmentIndex] = useState(-1);
   const [vttBlobUrl, setVttBlobUrl] = useState(null);
@@ -68,16 +72,57 @@ export function VideoPlayer({
     };
   }, [segments]);
 
-  // Sync active segment with currentTime
+  // High-frequency 60 FPS auto-tracking loop when video is playing
   useEffect(() => {
-    if (!segments || segments.length === 0) {
+    let lastReportedTime = -1;
+
+    const trackLoop = () => {
+      if (videoRef.current && !videoRef.current.paused) {
+        const curTime = videoRef.current.currentTime;
+        // Fire update if time changed by at least 30ms for silky-smooth 60fps tracking
+        if (Math.abs(curTime - lastReportedTime) >= 0.03) {
+          lastReportedTime = curTime;
+          onTimeUpdate(curTime);
+        }
+        animFrameRef.current = requestAnimationFrame(trackLoop);
+      }
+    };
+
+    if (isPlaying) {
+      animFrameRef.current = requestAnimationFrame(trackLoop);
+    } else {
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    }
+
+    return () => {
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    };
+  }, [isPlaying, onTimeUpdate, videoRef]);
+
+  // Synchronize active segment with currentTime & Auto-Tracking
+  useEffect(() => {
+    if (!segments || segments.length === 0 || !autoTracking) {
+      if (!autoTracking) return;
       setActiveSegment(null);
       setActiveSegmentIndex(-1);
       return;
     }
-    const idx = segments.findIndex(
+
+    // Direct timestamp match
+    let idx = segments.findIndex(
       seg => currentTime >= seg.start && currentTime <= seg.end
     );
+
+    // If between segments with a short pause (<0.35s), hold the previous segment to prevent flickering
+    if (idx === -1) {
+      const prevIdx = segments.findIndex(
+        seg => currentTime >= seg.end && currentTime <= seg.end + 0.35
+      );
+      if (prevIdx !== -1) {
+        idx = prevIdx;
+      }
+    }
+
     if (idx !== -1) {
       setActiveSegment(segments[idx]);
       setActiveSegmentIndex(idx);
@@ -85,7 +130,7 @@ export function VideoPlayer({
       setActiveSegment(null);
       setActiveSegmentIndex(-1);
     }
-  }, [currentTime, segments]);
+  }, [currentTime, segments, autoTracking]);
 
   const togglePlay = () => {
     if (!videoRef.current) return;
@@ -233,13 +278,42 @@ export function VideoPlayer({
         }}>
           {/* Active dialogue indicator badge */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button
+              onClick={() => setAutoTracking(!autoTracking)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '4px 10px',
+                borderRadius: '999px',
+                background: autoTracking ? 'rgba(16, 185, 129, 0.25)' : 'rgba(245, 158, 11, 0.25)',
+                border: `1px solid ${autoTracking ? 'rgba(16, 185, 129, 0.6)' : 'rgba(245, 158, 11, 0.6)'}`,
+                color: autoTracking ? '#6ee7b7' : '#fcd34d',
+                fontSize: '0.74rem',
+                fontWeight: 700,
+                backdropFilter: 'blur(8px)',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+              title={autoTracking ? 'Click to pause auto-tracking' : 'Click to enable auto-tracking'}
+            >
+              <span style={{
+                width: '7px',
+                height: '7px',
+                borderRadius: '50%',
+                background: autoTracking ? '#10b981' : '#f59e0b',
+                boxShadow: autoTracking ? '0 0 10px #10b981' : 'none'
+              }} />
+              {autoTracking ? 'Auto-Tracking: ON' : 'Auto-Tracking: PAUSED'}
+            </button>
+
             {activeSegment ? (
               <div style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '6px',
                 padding: '4px 10px',
-                borderRadius: '999px',
+                borderRadius: '6px',
                 background: 'rgba(6, 182, 212, 0.25)',
                 border: '1px solid rgba(6, 182, 212, 0.5)',
                 color: '#67e8f9',
@@ -247,14 +321,8 @@ export function VideoPlayer({
                 fontWeight: 700,
                 backdropFilter: 'blur(8px)'
               }}>
-                <span style={{
-                  width: '6px',
-                  height: '6px',
-                  borderRadius: '50%',
-                  background: '#22d3ee',
-                  boxShadow: '0 0 8px #22d3ee'
-                }} />
-                Dialogue #{activeSegmentIndex + 1} Inside Video
+                <Radio size={12} color="#22d3ee" />
+                Dialogue #{activeSegmentIndex + 1} ({formatPreciseTime(currentTime)})
               </div>
             ) : (
               <div style={{
@@ -264,7 +332,7 @@ export function VideoPlayer({
                 color: 'rgba(255,255,255,0.6)',
                 fontSize: '0.72rem'
               }}>
-                Subtitles Inside Video
+                Subtitles Ready
               </div>
             )}
           </div>
@@ -319,6 +387,8 @@ export function VideoPlayer({
             background: '#04060a'
           }}
           onClick={togglePlay}
+          onPlay={() => setIsPlaying(true)}
+          onPause={() => setIsPlaying(false)}
           onTimeUpdate={() => {
             if (videoRef.current) {
               onTimeUpdate(videoRef.current.currentTime);
@@ -341,7 +411,7 @@ export function VideoPlayer({
           )}
         </video>
 
-        {/* SUBTITLES RENDERED STRICTLY INSIDE THE VIDEO FRAME (NO BLACK BACKGROUND) */}
+        {/* SUBTITLES RENDERED STRICTLY INSIDE THE VIDEO FRAME WITH AUTO-TRACKING WORD HIGHLIGHT */}
         {showSubtitles && activeSegment && (
           <div style={{
             position: 'absolute',
@@ -369,9 +439,41 @@ export function VideoPlayer({
               direction: styleOptions?.isRtl ? 'rtl' : 'ltr',
               wordBreak: 'break-word',
               whiteSpace: 'pre-line',
-              transition: 'all 0.1s ease'
+              transition: 'all 0.08s ease'
             }}>
-              {activeSegment.text}
+              {(() => {
+                const rawText = activeSegment.text || '';
+                const words = rawText.split(' ');
+                if (words.length <= 1) return rawText;
+
+                const segDur = Math.max(0.01, activeSegment.end - activeSegment.start);
+                const elapsed = Math.max(0, currentTime - activeSegment.start);
+                const progressRatio = Math.min(1, elapsed / segDur);
+                const activeWordIdx = Math.min(words.length - 1, Math.floor(progressRatio * words.length));
+
+                return words.map((w, wIdx) => {
+                  const isCurrentWord = wIdx === activeWordIdx;
+                  const isSpoken = wIdx < activeWordIdx;
+                  return (
+                    <span
+                      key={wIdx}
+                      style={{
+                        margin: '0 3px',
+                        display: 'inline-block',
+                        color: isCurrentWord ? '#22d3ee' : txtColor,
+                        opacity: isCurrentWord ? 1 : (isSpoken ? 1 : 0.88),
+                        textShadow: isCurrentWord 
+                          ? '0 0 14px rgba(34, 211, 238, 0.95), -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000' 
+                          : textShadowCss,
+                        transform: isCurrentWord ? 'scale(1.05)' : 'scale(1)',
+                        transition: 'all 0.08s ease'
+                      }}
+                    >
+                      {w}
+                    </span>
+                  );
+                });
+              })()}
             </div>
           </div>
         )}
@@ -441,8 +543,8 @@ export function VideoPlayer({
             </span>
           </div>
 
-          {/* Right: Volume, Speed, Subtitle Inside Video toggle, Fullscreen */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {/* Right: Volume, Speed, Auto-Tracking, Subtitle Inside Video toggle, Fullscreen */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             {/* Volume */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <button
@@ -486,6 +588,22 @@ export function VideoPlayer({
                 ))}
               </select>
             </div>
+
+            {/* Auto-Tracking Toggle Button */}
+            <button
+              onClick={() => setAutoTracking(!autoTracking)}
+              className={`btn ${autoTracking ? 'btn-soft-emerald' : 'btn-soft-amber'}`}
+              style={{
+                height: '32px',
+                padding: '0 10px',
+                gap: '5px',
+                fontSize: '0.78rem'
+              }}
+              title={autoTracking ? 'Subtitles auto-tracking is ON' : 'Subtitles auto-tracking is PAUSED'}
+            >
+              <LocateFixed size={15} color={autoTracking ? '#34d399' : '#fbbf24'} />
+              <span>{autoTracking ? 'Auto-Track ON' : 'Auto-Track OFF'}</span>
+            </button>
 
             {/* Subtitles inside video toggle */}
             <button

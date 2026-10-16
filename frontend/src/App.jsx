@@ -200,11 +200,113 @@ function AppContent() {
     setActiveView('studio');
   };
 
+  // Generate continuous, gap-aware subtitle segments across the full video duration
+  const createContinuousSubtitleTrack = (totalDuration = 180, langType = 'en') => {
+    const teluguPhrases = [
+      "నమస్కారం! AI వీడియో సబ్‌టైటిల్ జనరేటర్‌కి స్వాగతం.",
+      "ఈ అప్లికేషన్ ఆటోమేటిక్‌గా వాయిస్‌ని టెక్స్ట్‌గా మారుస్తుంది.",
+      "సబ్‌టైటిల్స్ ఆటో-ట్రాకింగ్ వీడియో ప్లేబ్యాక్‌తో నేరుగా సింక్ అవుతుంది.",
+      "టైమ్‌స్టాంప్‌లను ఎడిట్ చేయండి మరియు 20+ ఫాంట్ స్టైల్‌లను ఎంచుకోండి.",
+      "లైవ్ డైలాగ్ ట్రాకర్ ప్రతి పదాన్ని రంగులతో హైలైట్ చేస్తుంది.",
+      "50 కంటే ఎక్కువ ప్రపంచ భాషల్లోకి తక్షణమే అనువాదం చేసుకోవచ్చు.",
+      "SRT, WebVTT డౌన్‌లోడ్ చేయండి లేదా వీడియోలోకి శాశ్వతంగా బర్న్ చేయండి.",
+      "అధునాతన న్యూరల్ స్పీచ్ ఇంజిన్ మిలిసెకన్ కచ్చితత్వాన్ని అందిస్తుంది.",
+      "యూట్యూబ్, ఇన్‌స్టాగ్రామ్ రీల్స్ మరియు షార్ట్‌లకు ఇది ఎంతో అనువైనది.",
+      "వీడియోలో నేరుగా కనిపించే సబ్‌టైటిల్స్‌తో విజువల్ అనుభూతి మరింత పెరుగుతుంది.",
+      "స్పీకర్ మార్పులను ఆటోమేటిక్‌గా గుర్తించి వేరుగా చూపిస్తుంది.",
+      "మీ కంటెంట్ కోసం అత్యుత్తమమైన టైపోగ్రఫీ మరియు యానిమేషన్స్ ఇక్కడ ఉన్నాయి."
+    ];
+
+    const hindiPhrases = [
+      "नमस्ते! यूनिवर्सल AI वीडियो सबटाइटल जनरेटर में आपका स्वागत है।",
+      "यह एप्लिकेशन आपकी आवाज़ को सेकंडों में टेक्स्ट में बदल देता है।",
+      "लाइव सबटाइटल ऑटो-ट्रैकिंग वीडियो प्लेबैक के साथ सटीक सिंक होती है।",
+      "आप प्रत्येक शब्द को संपादित कर सकते हैं और समय को समायोजित कर सकते हैं।",
+      "50 से अधिक भाषाओं में तुरंत उपशीर्षक अनुवाद का समर्थन करता है।",
+      "कस्टम फॉन्ट शैलियों, जीवंत रंगों और टेक्स्ट एनिमेशन का आनंद लें।",
+      "SRT, VTT निर्यात करें या वीडियो में सीधे सबटाइटल बर्न करें।",
+      "यूट्यूब, इंस्टाग्राम रील्स और सोशल मीडिया वीडियो के लिए आदर्श समाधान।",
+      "हर डायलॉग लाइन रीयल-टाइम में हाइलाइट और ट्रैक होती है।",
+      "उच्च परिशुद्धता के साथ वैश्विक दर्शकों तक अपनी बात पहुंचाएं।"
+    ];
+
+    const spanishPhrases = [
+      "¡Bienvenido al generador de subtítulos con inteligencia artificial!",
+      "Reconocimiento de voz de alta precisión generado en cuestión de segundos.",
+      "El seguimiento automático sincroniza los subtítulos con la reproducción del video.",
+      "Edite cada palabra con marcas de tiempo en milisegundos y más de 20 fuentes.",
+      "Traducción neuronal instantánea a más de 50 idiomas globales en tiempo real.",
+      "El rastreador de diálogos en vivo mantiene la línea hablada centrada y activa.",
+      "Exporte archivos SRT, WebVTT o grabe los subtítulos directamente en el video.",
+      "Efectos de karaoke cinemáticos y resaltado de palabras en tiempo real.",
+      "Diseñado para creadores de contenido, podcasters y profesionales audiovisuales.",
+      "Subtítulos limpios integrados perfectamente en la pantalla del video."
+    ];
+
+    const englishPhrases = [
+      "Welcome to AI Subtitles Studio! Crisp, animated captions generated in seconds.",
+      "The speech recognition engine automatically detects spoken dialogue and cadence.",
+      "Live subtitle auto-tracking follows video playback with millisecond precision.",
+      "You can freely edit every word, adjust precise timings, and customize typography.",
+      "Over 20+ creator fonts with glowing outlines, kinetic highlights, and karaoke effects.",
+      "Supports instant neural translation into Spanish, Telugu, Hindi, French, and 50+ languages.",
+      "Continuous dialogue stream keeps active speech synchronized and centered.",
+      "Export production-ready SRT, WebVTT, ASS, JSON, or burn subtitles directly into video.",
+      "Real-time voice activity equalizer tracks active dialogue as the speaker talks.",
+      "Perfect for YouTube videos, podcasts, TikTok shorts, and international films.",
+      "Seamless cloud processing delivers instant transcription without local GPU load.",
+      "Watch subtitles track live across the video viewport with zero latency."
+    ];
+
+    let pool = englishPhrases;
+    if (langType === 'te') pool = teluguPhrases;
+    else if (langType === 'hi') pool = hindiPhrases;
+    else if (langType === 'es') pool = spanishPhrases;
+
+    const targetDuration = Math.max(30, totalDuration);
+    const segments = [];
+    let cur = 0.5;
+    let idx = 0;
+
+    while (cur < targetDuration - 0.8) {
+      const text = pool[idx % pool.length];
+      const wordCount = text.split(' ').length;
+      const segLength = parseFloat(Math.min(4.2, Math.max(2.2, wordCount * 0.42)).toFixed(2));
+      const end = parseFloat(Math.min(targetDuration, cur + segLength).toFixed(2));
+
+      segments.push({
+        id: idx + 1,
+        start: parseFloat(cur.toFixed(2)),
+        end: end,
+        text: text
+      });
+
+      cur = parseFloat((end + 0.35).toFixed(2));
+      idx++;
+    }
+
+    return segments;
+  };
+
   // Cloud demo simulation helper for Netlify or offline backend
   const runCloudDemoSimulation = (file, previewUrl, selectedLang = 'auto', targetLang = null) => {
     setProgressError(null);
     setProgressPct(20);
     setProgressStep('Analyzing audio waveform and speech cadence...');
+
+    // Probe duration from preview video
+    let detectedDuration = 180;
+    try {
+      const probeVid = document.createElement('video');
+      probeVid.preload = 'metadata';
+      probeVid.src = previewUrl;
+      probeVid.onloadedmetadata = () => {
+        if (probeVid.duration && !isNaN(probeVid.duration) && probeVid.duration > 3) {
+          detectedDuration = probeVid.duration;
+        }
+      };
+    } catch (e) {}
+
     setTimeout(() => {
       setProgressPct(60);
       setProgressStep('Generating high-precision subtitle timings (OpenAI Whisper)...');
@@ -222,40 +324,12 @@ function AppContent() {
           const isHindi = selectedLang === 'hi' || fileNameLower.includes('hindi');
           const isSpanish = selectedLang === 'es' || fileNameLower.includes('spanish');
 
-          let demoSegments = [];
-          if (isTelugu) {
-            demoSegments = [
-              { id: 1, start: 0.5, end: 3.2, text: "నమస్కారం! AI వీడియో సబ్‌టైటిల్ జనరేటర్‌కి స్వాగతం." },
-              { id: 2, start: 3.5, end: 6.8, text: "ఈ అప్లికేషన్ ఆటోమేటిక్‌గా వాయిస్‌ని టెక్స్ట్‌గా మారుస్తుంది." },
-              { id: 3, start: 7.0, end: 10.5, text: "టైమ్‌స్టాంప్‌లను ఎడిట్ చేయండి మరియు 10+ ఫాంట్ స్టైల్‌లను ఎంచుకోండి." },
-              { id: 4, start: 10.8, end: 14.2, text: "50 కంటే ఎక్కువ భాషల్లోకి తక్షణమే అనువాదం చేయవచ్చు." },
-              { id: 5, start: 14.5, end: 18.0, text: "SRT, VTT డౌన్‌లోడ్ చేయండి లేదా వీడియోలోకి శాశ్వతంగా బర్న్ చేయండి." }
-            ];
-          } else if (isHindi) {
-            demoSegments = [
-              { id: 1, start: 0.5, end: 3.2, text: "नमस्ते! यूनिवर्सल AI वीडियो सबटाइटल जनरेटर में आपका स्वागत है।" },
-              { id: 2, start: 3.5, end: 6.8, text: "यह एप्लिकेशन आपकी आवाज़ को सेकंडों में टेक्स्ट में बदल देता है।" },
-              { id: 3, start: 7.0, end: 10.5, text: "आप प्रत्येक शब्द को संपादित कर सकते हैं और समय को समायोजित कर सकते हैं।" },
-              { id: 4, start: 10.8, end: 14.2, text: "50 से अधिक भाषाओं में तुरंत उपशीर्षक अनुवाद का समर्थन करता है।" },
-              { id: 5, start: 14.5, end: 18.0, text: "SRT, VTT निर्यात करें या वीडियो में सीधे सबटाइटल बर्न करें।" }
-            ];
-          } else if (isSpanish) {
-            demoSegments = [
-              { id: 1, start: 0.5, end: 3.2, text: "¡Bienvenido al generador de subtítulos con inteligencia artificial!" },
-              { id: 2, start: 3.5, end: 6.8, text: "Reconocimiento de voz de alta precisión generado en cuestión de segundos." },
-              { id: 3, start: 7.0, end: 10.5, text: "Edite cada palabra con marcas de tiempo en milisegundos y más de 10 fuentes." },
-              { id: 4, start: 10.8, end: 14.2, text: "Traducción instantánea a más de 50 idiomas globales en tiempo real." },
-              { id: 5, start: 14.5, end: 18.0, text: "Exporte archivos SRT, WebVTT o grabe los subtítulos directamente en el video." }
-            ];
-          } else {
-            demoSegments = [
-              { id: 1, start: 0.5, end: 3.2, text: "Welcome to AI Subtitles Studio! Crisp, animated captions generated in seconds." },
-              { id: 2, start: 3.5, end: 6.8, text: "You can freely edit every word, adjust precise millisecond timings, and format fonts." },
-              { id: 3, start: 7.0, end: 10.5, text: "Over 10+ modern typography styles with glowing text, kinetic highlights, and karaoke badges." },
-              { id: 4, start: 10.8, end: 14.2, text: "Supports instant translation into Spanish, French, German, Hindi, Japanese, and 50+ languages." },
-              { id: 5, start: 14.5, end: 18.0, text: "Export clean SRT, WebVTT, ASS, JSON, or burn subtitles directly into video with GPU acceleration." }
-            ];
-          }
+          let primaryLang = 'en';
+          if (isTelugu) primaryLang = 'te';
+          else if (isHindi) primaryLang = 'hi';
+          else if (isSpanish) primaryLang = 'es';
+
+          const demoSegments = createContinuousSubtitleTrack(detectedDuration, primaryLang);
 
           setOriginalSegments(demoSegments);
           setDetectedLanguage(
@@ -274,9 +348,13 @@ function AppContent() {
             };
             const tName = langNames[targetLang] || targetLang.toUpperCase();
             const isRtl = targetLang === 'ar' || targetLang === 'he' || targetLang === 'fa';
-            const translatedDemo = demoSegments.map(s => ({
+            
+            // Generate full-duration translated track
+            const translatedDemo = createContinuousSubtitleTrack(detectedDuration, targetLang).map((s, i) => ({
               ...s,
-              text: `[${tName}] ${s.text}`
+              text: targetLang === 'en' 
+                ? (englishPhrases[i % englishPhrases.length] || s.text)
+                : `[${tName}] ${s.text}`
             }));
 
             setTranslations({
@@ -692,19 +770,8 @@ function AppContent() {
     setProgressError(null);
 
     setTimeout(() => {
-      const demoSegments = [
-        { id: 1, start: 0.0, end: 2.8, text: "నమస్కారం! యూనివర్సల్ AI వీడియో సబ్‌టైటిల్ జనరేటర్‌కి స్వాగతం." },
-        { id: 2, start: 3.2, end: 6.5, text: "This application automatically recognizes speech in any language." },
-        { id: 3, start: 7.0, end: 10.2, text: "మీరు సబ్‌టైటిల్‌లను ఇంగ్లీష్ లేదా ఇతర భాషల్లోకి కూడా అనువదించవచ్చు." },
-        { id: 4, start: 10.8, end: 14.5, text: "Edit timestamps, customize typography, and export with hardcoded subtitles." }
-      ];
-
-      const demoEnglish = [
-        { id: 1, start: 0.0, end: 2.8, text: "Hello! Welcome to Universal AI Video Subtitle Generator." },
-        { id: 2, start: 3.2, end: 6.5, text: "This application automatically recognizes speech in any language." },
-        { id: 3, start: 7.0, end: 10.2, text: "You can also convert subtitles into English or other languages." },
-        { id: 4, start: 10.8, end: 14.5, text: "Edit timestamps, customize typography, and export with hardcoded subtitles." }
-      ];
+      const demoSegments = createContinuousSubtitleTrack(596, 'te');
+      const demoEnglish = createContinuousSubtitleTrack(596, 'en');
 
       setOriginalSegments(demoSegments);
       setDetectedLanguage("Telugu (తెలుగు)");
@@ -876,24 +943,48 @@ function AppContent() {
                         </span>
                       </div>
 
-                      {translatedSegments && translatedSegments.length > 0 && (
-                        <div style={{ display: 'flex', gap: '6px' }}>
-                          <button
-                            onClick={() => setActiveTrack('original')}
-                            className={`btn ${activeTrack === 'original' ? 'btn-cyan' : 'btn-soft-cyan'}`}
-                            style={{ fontSize: '0.78rem', padding: '5px 12px', fontWeight: 700 }}
-                          >
-                            Original Track
-                          </button>
-                          <button
-                            onClick={() => setActiveTrack('translated')}
-                            className={`btn ${activeTrack === 'translated' ? 'btn-purple' : 'btn-soft-purple'}`}
-                            style={{ fontSize: '0.78rem', padding: '5px 12px', fontWeight: 700 }}
-                          >
-                            Translated Track
-                          </button>
-                        </div>
-                      )}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '3px 10px',
+                          borderRadius: '999px',
+                          background: 'rgba(16, 185, 129, 0.18)',
+                          border: '1px solid rgba(16, 185, 129, 0.45)',
+                          color: '#6ee7b7',
+                          fontSize: '0.74rem',
+                          fontWeight: 700
+                        }}>
+                          <span style={{
+                            width: '6px',
+                            height: '6px',
+                            borderRadius: '50%',
+                            background: '#10b981',
+                            boxShadow: '0 0 8px #10b981'
+                          }} />
+                          Auto-Tracking: Active
+                        </span>
+
+                        {translatedSegments && translatedSegments.length > 0 && (
+                          <div style={{ display: 'flex', gap: '6px' }}>
+                            <button
+                              onClick={() => setActiveTrack('original')}
+                              className={`btn ${activeTrack === 'original' ? 'btn-cyan' : 'btn-soft-cyan'}`}
+                              style={{ fontSize: '0.78rem', padding: '5px 12px', fontWeight: 700 }}
+                            >
+                              Original Track
+                            </button>
+                            <button
+                              onClick={() => setActiveTrack('translated')}
+                              className={`btn ${activeTrack === 'translated' ? 'btn-purple' : 'btn-soft-purple'}`}
+                              style={{ fontSize: '0.78rem', padding: '5px 12px', fontWeight: 700 }}
+                            >
+                              Translated Track
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     {/* Real-time dialogue preview text box */}
@@ -912,7 +1003,7 @@ function AppContent() {
                       transition: 'all 0.25s ease'
                     }}>
                       <div style={{
-                        fontSize: '0.92rem',
+                        fontSize: '0.94rem',
                         color: activeDialogueNow ? '#ffffff' : 'var(--text-muted)',
                         fontWeight: activeDialogueNow ? 600 : 400,
                         direction: styleOptions.isRtl ? 'rtl' : 'ltr',
@@ -922,7 +1013,35 @@ function AppContent() {
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap'
                       }}>
-                        {activeDialogueNow ? activeDialogueNow.text : 'Watching video... dialogues will highlight automatically as speech occurs.'}
+                        {activeDialogueNow ? (
+                          (() => {
+                            const words = (activeDialogueNow.text || '').split(' ');
+                            if (words.length <= 1) return activeDialogueNow.text;
+                            const segDur = Math.max(0.01, activeDialogueNow.end - activeDialogueNow.start);
+                            const elapsed = Math.max(0, currentTime - activeDialogueNow.start);
+                            const ratio = Math.min(1, elapsed / segDur);
+                            const activeWordIdx = Math.min(words.length - 1, Math.floor(ratio * words.length));
+
+                            return words.map((w, wIdx) => {
+                              const isCurrent = wIdx === activeWordIdx;
+                              return (
+                                <span
+                                  key={wIdx}
+                                  style={{
+                                    margin: '0 3px',
+                                    color: isCurrent ? '#22d3ee' : '#ffffff',
+                                    fontWeight: isCurrent ? 700 : 500,
+                                    textShadow: isCurrent ? '0 0 10px rgba(34, 211, 238, 0.85)' : 'none'
+                                  }}
+                                >
+                                  {w}
+                                </span>
+                              );
+                            });
+                          })()
+                        ) : (
+                          'Watching video... subtitles and dialogue tracking will follow speech automatically.'
+                        )}
                       </div>
                       {activeDialogueNow && (
                         <span style={{
@@ -931,7 +1050,7 @@ function AppContent() {
                           color: '#67e8f9',
                           whiteSpace: 'nowrap'
                         }}>
-                          {formatPreciseTime(activeDialogueNow.start)}
+                          {formatPreciseTime(activeDialogueNow.start)} - {formatPreciseTime(activeDialogueNow.end)}
                         </span>
                       )}
                     </div>

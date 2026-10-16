@@ -263,28 +263,30 @@ export function SubtitleEditor({
               </button>
             )}
 
-            {/* Auto-Scroll Toggle */}
+            {/* Auto-Track Toggle */}
             <button
               onClick={() => setAutoScroll(!autoScroll)}
-              className={`btn ${autoScroll ? 'btn-soft-cyan' : 'btn-soft-amber'}`}
+              className={`btn ${autoScroll ? 'btn-soft-emerald' : 'btn-soft-amber'}`}
               style={{
                 fontSize: '0.82rem',
-                padding: '6px 12px'
+                padding: '6px 12px',
+                gap: '6px'
               }}
-              title={autoScroll ? 'Auto-scroll is ON. Click to pause auto-scrolling.' : 'Auto-scroll is paused. Click to turn ON.'}
+              title={autoScroll ? 'Subtitle auto-tracking follows video playback' : 'Subtitle auto-tracking paused'}
             >
-              {autoScroll ? <Eye size={14} color="#22d3ee" /> : <EyeOff size={14} color="#fbbf24" />}
-              <span>{autoScroll ? 'Auto-Scroll ON' : 'Auto-Scroll Paused'}</span>
+              <LocateFixed size={14} color={autoScroll ? '#34d399' : '#fbbf24'} />
+              <span>{autoScroll ? 'Auto-Track: ON' : 'Auto-Track: OFF'}</span>
             </button>
 
             {activeId && (
               <button
                 onClick={handleJumpToActive}
                 className="btn btn-cyan"
-                style={{ width: '32px', height: '32px', padding: 0 }}
+                style={{ height: '32px', padding: '0 10px', fontSize: '0.78rem', gap: '5px' }}
                 title="Jump view to currently playing subtitle line"
               >
-                <LocateFixed size={15} />
+                <LocateFixed size={14} />
+                <span>Snap to Active</span>
               </button>
             )}
 
