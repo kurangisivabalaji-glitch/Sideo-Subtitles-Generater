@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { SUPPORTED_LANGUAGES } from '../utils/languages';
 
-export function VideoUploader({ onStartTranscription, onUseSampleVideo }) {
+export function VideoUploader({ onStartTranscription, onUseSampleVideo, onStartLiveVoiceSession }) {
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
@@ -427,15 +427,27 @@ export function VideoUploader({ onStartTranscription, onUseSampleVideo }) {
           flexWrap: 'wrap',
           gap: '16px'
         }}>
-          {/* Sample Video button */}
-          <button
-            type="button"
-            onClick={onUseSampleVideo}
-            className="btn btn-cyan"
-            style={{ fontSize: '0.9rem', padding: '12px 22px', fontWeight: 700, boxShadow: '0 4px 18px rgba(6, 182, 212, 0.4)' }}
-          >
-            <Play size={16} fill="#ffffff" /> Try Demo Video (Telugu &amp; English)
-          </button>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            {/* Live Speak Auto-Track button */}
+            <button
+              type="button"
+              onClick={() => onStartLiveVoiceSession && onStartLiveVoiceSession(selectedLanguage)}
+              className="btn btn-emerald"
+              style={{ fontSize: '0.9rem', padding: '12px 22px', fontWeight: 700, boxShadow: '0 4px 18px rgba(16, 185, 129, 0.4)' }}
+            >
+              🎙️ Speak Live &amp; Auto-Track
+            </button>
+
+            {/* Sample Video button */}
+            <button
+              type="button"
+              onClick={onUseSampleVideo}
+              className="btn btn-cyan"
+              style={{ fontSize: '0.9rem', padding: '12px 22px', fontWeight: 700, boxShadow: '0 4px 18px rgba(6, 182, 212, 0.4)' }}
+            >
+              <Play size={16} fill="#ffffff" /> Try Demo Video
+            </button>
+          </div>
 
           <button
             type="button"

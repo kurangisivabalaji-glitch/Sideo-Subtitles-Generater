@@ -118,7 +118,7 @@ def transcribe_audio(
         task="transcribe",
         vad_filter=True,
         vad_parameters=dict(min_silence_duration_ms=400),
-        word_timestamps=False
+        word_timestamps=True
     )
 
     detected_lang = info.language
@@ -140,11 +140,24 @@ def transcribe_audio(
         if not text:
             continue
 
+        words_data = []
+        if hasattr(seg, "words") and seg.words:
+            for w in seg.words:
+                w_text = w.word.strip()
+                if w_text:
+                    words_data.append({
+                        "word": w_text,
+                        "start": round(w.start, 2),
+                        "end": round(w.end, 2),
+                        "probability": round(getattr(w, "probability", 1.0), 2)
+                    })
+
         collected_segments.append({
             "id": seg_idx,
             "start": round(seg.start, 2),
             "end": round(seg.end, 2),
-            "text": text
+            "text": text,
+            "words": words_data
         })
 
         if progress_callback and audio_duration > 0:

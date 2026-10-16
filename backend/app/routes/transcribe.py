@@ -140,6 +140,7 @@ async def start_transcription(
         "size": video_info["size"],
     }
 
+@router.get("/transcribe/status/{job_id}")
 @router.get("/jobs/{job_id}")
 async def get_job_status(job_id: str):
     job = job_manager.get_job(job_id)

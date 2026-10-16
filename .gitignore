@@ -39,6 +39,10 @@ media/outputs/*
 !media/outputs/.gitkeep
 uploads/*
 outputs/*
+backend/uploads/*
+backend/outputs/*
+!backend/uploads/.gitkeep
+!backend/outputs/.gitkeep
 
 # Testing & Cache
 .pytest_cache/

@@ -374,43 +374,82 @@ export function VideoPlayer({
           </div>
         </div>
 
-        {/* HTML5 Video element */}
-        <video
-          ref={videoRef}
-          src={burnedVideoSrc || videoSrc}
-          playsInline
-          crossOrigin="anonymous"
-          style={{
+        {/* Video Canvas or Live Speech Studio Visualizer */}
+        {!videoSrc && !burnedVideoSrc ? (
+          <div style={{
             width: '100%',
-            maxHeight: '520px',
-            display: 'block',
-            objectFit: 'contain',
-            background: '#04060a'
-          }}
-          onClick={togglePlay}
-          onPlay={() => setIsPlaying(true)}
-          onPause={() => setIsPlaying(false)}
-          onTimeUpdate={() => {
-            if (videoRef.current) {
-              onTimeUpdate(videoRef.current.currentTime);
-            }
-          }}
-          onLoadedMetadata={() => {
-            if (videoRef.current) {
-              setDuration(videoRef.current.duration);
-            }
-          }}
-          onEnded={() => setIsPlaying(false)}
-        >
-          {vttBlobUrl && (
-            <track
-              kind="subtitles"
-              label="AI Subtitles"
-              src={vttBlobUrl}
-              default={false}
-            />
-          )}
-        </video>
+            height: '340px',
+            background: 'radial-gradient(circle at center, #0f172a 0%, #030712 100%)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '14px',
+            position: 'relative',
+            borderBottom: '1px solid var(--border-subtle)'
+          }}>
+            <div style={{
+              width: '64px',
+              height: '64px',
+              borderRadius: '50%',
+              background: 'rgba(6, 182, 212, 0.15)',
+              border: '1px solid rgba(6, 182, 212, 0.45)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#22d3ee',
+              boxShadow: '0 0 25px rgba(6, 182, 212, 0.35)',
+              animation: 'pulse 2s infinite'
+            }}>
+              <Radio size={32} />
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <span style={{ fontSize: '1rem', fontWeight: 700, color: '#f8fafc', display: 'block' }}>
+                Live Speech &amp; Dialogue Auto-Tracker
+              </span>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
+                Speak into your microphone below — subtitles auto-track and appear here in real time
+              </span>
+            </div>
+          </div>
+        ) : (
+          <video
+            ref={videoRef}
+            src={burnedVideoSrc || videoSrc}
+            playsInline
+            crossOrigin="anonymous"
+            style={{
+              width: '100%',
+              maxHeight: '520px',
+              display: 'block',
+              objectFit: 'contain',
+              background: '#04060a'
+            }}
+            onClick={togglePlay}
+            onPlay={() => setIsPlaying(true)}
+            onPause={() => setIsPlaying(false)}
+            onTimeUpdate={() => {
+              if (videoRef.current) {
+                onTimeUpdate(videoRef.current.currentTime);
+              }
+            }}
+            onLoadedMetadata={() => {
+              if (videoRef.current) {
+                setDuration(videoRef.current.duration);
+              }
+            }}
+            onEnded={() => setIsPlaying(false)}
+          >
+            {vttBlobUrl && (
+              <track
+                kind="subtitles"
+                label="AI Subtitles"
+                src={vttBlobUrl}
+                default={false}
+              />
+            )}
+          </video>
+        )}
 
         {/* SUBTITLES RENDERED STRICTLY INSIDE THE VIDEO FRAME WITH AUTO-TRACKING WORD HIGHLIGHT */}
         {showSubtitles && activeSegment && (
@@ -447,10 +486,26 @@ export function VideoPlayer({
                 const words = rawText.split(' ');
                 if (words.length <= 1) return rawText;
 
-                const segDur = Math.max(0.01, activeSegment.end - activeSegment.start);
-                const elapsed = Math.max(0, currentTime - activeSegment.start);
-                const progressRatio = Math.min(1, elapsed / segDur);
-                const activeWordIdx = Math.min(words.length - 1, Math.floor(progressRatio * words.length));
+                // 1. Try exact word-level timestamp array from Whisper
+                let activeWordIdx = -1;
+                if (activeSegment.words && Array.isArray(activeSegment.words) && activeSegment.words.length > 0) {
+                  activeWordIdx = activeSegment.words.findIndex(
+                    w => currentTime >= parseFloat(w.start) && currentTime <= parseFloat(w.end)
+                  );
+                  if (activeWordIdx === -1) {
+                    activeWordIdx = activeSegment.words.findIndex(
+                      w => currentTime <= parseFloat(w.end)
+                    );
+                  }
+                }
+
+                // 2. Fallback to precise proportional time interpolation
+                if (activeWordIdx === -1) {
+                  const segDur = Math.max(0.01, activeSegment.end - activeSegment.start);
+                  const elapsed = Math.max(0, currentTime - activeSegment.start);
+                  const progressRatio = Math.min(1, elapsed / segDur);
+                  activeWordIdx = Math.min(words.length - 1, Math.floor(progressRatio * words.length));
+                }
 
                 return words.map((w, wIdx) => {
                   const isCurrentWord = wIdx === activeWordIdx;

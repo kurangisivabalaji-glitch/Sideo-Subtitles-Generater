@@ -32,6 +32,7 @@ import { TranslationPanel } from './components/TranslationPanel';
 import { StylingPanel } from './components/StylingPanel';
 import { ExportModal } from './components/ExportModal';
 import { ProgressModal } from './components/ProgressModal';
+import { LiveVoiceAutoTracker } from './components/LiveVoiceAutoTracker';
 import { isLanguageRtl } from './utils/languages';
 import { formatPreciseTime } from './utils/timeUtils';
 import { API_BASE, WS_BASE } from './utils/apiConfig';
@@ -390,20 +391,6 @@ function AppContent() {
     setProgressStep('Connecting to speech engine and queuing worker...');
     setProgressError(null);
 
-    // Detect if running on static Netlify deployment or cloud demo session
-    const isNetlifyHost = typeof window !== 'undefined' && (
-      window.location.hostname.includes('netlify.app') ||
-      window.location.hostname.includes('netlify')
-    );
-    const hasCloudSession = token && (token.startsWith('demo_session_') || token.startsWith('google_session_'));
-    const isCloudDemo = !API_BASE || isNetlifyHost || hasCloudSession;
-
-    if (isCloudDemo) {
-      console.log('Static cloud hosting active: launching seamless client speech generator');
-      runCloudDemoSimulation(file, localPreviewUrl, language, targetLanguage);
-      return;
-    }
-
     const formData = new FormData();
     formData.append('file', file);
     formData.append('model', model);
@@ -413,124 +400,66 @@ function AppContent() {
     }
     formData.append('idempotency_key', `${file.name}_${file.size}_${Date.now()}`);
 
+    const isSyntheticSession = token && (token.startsWith('demo_session_') || token.startsWith('google_session_'));
+    const isRealJwt = token && !isSyntheticSession;
+
     try {
-      // 1. If user is authenticated with backend token, submit to production Queue /api/jobs
-      if (token) {
+      // 1. If user is authenticated with real backend token, submit to production Queue /api/jobs
+      if (isRealJwt) {
         const response = await authFetch('/api/jobs', {
           method: 'POST',
           body: formData
         });
 
         const contentType = response.headers.get('content-type') || '';
-        if (!response.ok || !contentType.includes('application/json')) {
-          console.warn('Backend unavailable, activating cloud simulation');
-          runCloudDemoSimulation(file, localPreviewUrl, language, targetLanguage);
-          return;
-        }
-
-        const job = await response.json();
-        const jobId = job.id;
-        setCurrentJobId(jobId);
-        const uploadFilename = job.video?.storage_path ? job.video.storage_path.split(/[\\/]/).pop() : file.name;
-        setVideoFilename(file.name);
-        setVideoSrc(localPreviewUrl || `${API_BASE}/media/uploads/${uploadFilename}`);
-
-        // Try WebSocket first for instant live stage updates
-        let wsConnected = false;
-        try {
-          const wsUrl = `${WS_BASE}/api/ws/jobs/${jobId}?token=${token}`;
-          const ws = new WebSocket(wsUrl);
-
-          ws.onmessage = (event) => {
-            try {
-              const data = JSON.parse(event.data);
-              if (data.progress !== undefined) setProgressPct(data.progress);
-              if (data.stage) setProgressStep(data.stage);
-              if (data.status === 'COMPLETED') {
-                ws.close();
-                finishJob(jobId, localPreviewUrl);
-              } else if (data.status === 'FAILED') {
-                ws.close();
-                runCloudDemoSimulation(file, localPreviewUrl, language, targetLanguage);
-              }
-            } catch (err) {}
-          };
-          ws.onopen = () => { wsConnected = true; };
-          ws.onerror = () => { wsConnected = false; };
-        } catch (wsErr) {
-          wsConnected = false;
-        }
-
-        // Fallback polling loop
-        const interval = setInterval(async () => {
-          try {
-            const jobRes = await authFetch(`/api/jobs/${jobId}`);
-            if (!jobRes.ok) return;
-            const updatedJob = await jobRes.json();
-
-            if (updatedJob.status === 'PROCESSING' || updatedJob.status === 'QUEUED') {
-              setProgressPct(updatedJob.progress || 15);
-              setProgressStep(updatedJob.stage || 'Transcribing speech...');
-            } else if (updatedJob.status === 'COMPLETED') {
-              clearInterval(interval);
-              finishJob(jobId, localPreviewUrl);
-            } else if (updatedJob.status === 'FAILED' || updatedJob.status === 'CANCELLED') {
-              clearInterval(interval);
-              runCloudDemoSimulation(file, localPreviewUrl, language, targetLanguage);
-            }
-          } catch (pollErr) {
-            console.error('Job polling error:', pollErr);
-          }
-        }, 1200);
-
-      } else {
-        // 2. Guest mode: try live backend first, fallback gracefully on cloud static deployment
-        try {
-          const response = await fetch(`${API_BASE}/api/transcribe`, {
-            method: 'POST',
-            body: formData
-          });
-
-          const contentType = response.headers.get('content-type') || '';
-          if (!response.ok || !contentType.includes('application/json')) {
-            runCloudDemoSimulation(file, localPreviewUrl, language, targetLanguage);
-            return;
-          }
-
-          const data = await response.json();
-          const jobId = data.job_id;
+        if (response.ok && contentType.includes('application/json')) {
+          const job = await response.json();
+          const jobId = job.id;
           setCurrentJobId(jobId);
-          setVideoFilename(data.video_filename);
-          setVideoSrc(data.video_url || localPreviewUrl);
+          const uploadFilename = job.video?.storage_path ? job.video.storage_path.split(/[\\/]/).pop() : file.name;
+          setVideoFilename(file.name);
+          setVideoSrc(localPreviewUrl || `${API_BASE}/media/uploads/${uploadFilename}`);
 
-          // Poll guest job
+          // Try WebSocket first for instant live stage updates
+          let wsConnected = false;
+          try {
+            const wsUrl = `${WS_BASE}/api/ws/jobs/${jobId}?token=${token}`;
+            const ws = new WebSocket(wsUrl);
+
+            ws.onmessage = (event) => {
+              try {
+                const data = JSON.parse(event.data);
+                if (data.progress !== undefined) setProgressPct(data.progress);
+                if (data.stage) setProgressStep(data.stage);
+                if (data.status === 'COMPLETED') {
+                  ws.close();
+                  finishJob(jobId, localPreviewUrl);
+                } else if (data.status === 'FAILED') {
+                  ws.close();
+                  runCloudDemoSimulation(file, localPreviewUrl, language, targetLanguage);
+                }
+              } catch (err) {}
+            };
+            ws.onopen = () => { wsConnected = true; };
+            ws.onerror = () => { wsConnected = false; };
+          } catch (wsErr) {
+            wsConnected = false;
+          }
+
+          // Polling loop
           const interval = setInterval(async () => {
             try {
-              const jobRes = await fetch(`${API_BASE}/api/jobs/${jobId}`);
+              const jobRes = await authFetch(`/api/jobs/${jobId}`);
               if (!jobRes.ok) return;
-              const job = await jobRes.json();
+              const updatedJob = await jobRes.json();
 
-              if (job.status === 'processing') {
-                setProgressPct(job.progress || 20);
-                setProgressStep(job.step || 'Transcribing speech...');
-              } else if (job.status === 'completed') {
+              if (updatedJob.status === 'PROCESSING' || updatedJob.status === 'QUEUED') {
+                setProgressPct(updatedJob.progress || 15);
+                setProgressStep(updatedJob.stage || 'Transcribing speech with Whisper AI...');
+              } else if (updatedJob.status === 'COMPLETED') {
                 clearInterval(interval);
-                setIsProcessing(false);
-                const res = job.result;
-
-                const initialSegments = res.segments || [];
-                setOriginalSegments(initialSegments);
-                setDetectedLanguage(res.language_name || res.language);
-                setDetectedLanguageConfidence(res.language_probability);
-                
-                const rtl = res.is_rtl || isLanguageRtl(res.language);
-                setStyleOptions(prev => ({ ...prev, isRtl: rtl }));
-
-                setHistory([initialSegments]);
-                setHistoryIndex(0);
-                setHasVideo(true);
-                setActiveTab('dialogue');
-              } else if (job.status === 'failed') {
+                finishJob(jobId, localPreviewUrl);
+              } else if (updatedJob.status === 'FAILED' || updatedJob.status === 'CANCELLED') {
                 clearInterval(interval);
                 runCloudDemoSimulation(file, localPreviewUrl, language, targetLanguage);
               }
@@ -538,11 +467,77 @@ function AppContent() {
               console.error('Job polling error:', pollErr);
             }
           }, 1200);
-        } catch (guestErr) {
-          console.warn('Backend unavailable on cloud. Providing cloud demo studio preview:', guestErr);
-          runCloudDemoSimulation(file, localPreviewUrl, language, targetLanguage);
+          return;
         }
       }
+
+      // 2. Direct Whisper Speech Recognition backend (/api/transcribe) for guest / session users
+      if (API_BASE) {
+        try {
+          const response = await fetch(`${API_BASE}/api/transcribe`, {
+            method: 'POST',
+            body: formData
+          });
+
+          const contentType = response.headers.get('content-type') || '';
+          if (response.ok && contentType.includes('application/json')) {
+            const data = await response.json();
+            const jobId = data.job_id;
+            setCurrentJobId(jobId);
+            setVideoFilename(data.video_filename || file.name);
+            setVideoSrc(localPreviewUrl || `${API_BASE}${data.video_url}`);
+
+            // Poll transcribe job
+            const interval = setInterval(async () => {
+              try {
+                let jobRes = await fetch(`${API_BASE}/api/transcribe/status/${jobId}`);
+                if (!jobRes.ok) {
+                  jobRes = await fetch(`${API_BASE}/api/jobs/${jobId}`);
+                }
+                if (!jobRes.ok) return;
+                const job = await jobRes.json();
+
+                if (job.status === 'processing') {
+                  setProgressPct(job.progress || 20);
+                  setProgressStep(job.step || 'Transcribing speech with Whisper AI...');
+                } else if (job.status === 'completed') {
+                  clearInterval(interval);
+                  setIsProcessing(false);
+                  const res = job.result;
+
+                  const initialSegments = res.segments || [];
+                  setOriginalSegments(initialSegments);
+                  setDetectedLanguage(res.language_name || res.language);
+                  setDetectedLanguageConfidence(res.language_probability || 0.99);
+                  
+                  const rtl = res.is_rtl || isLanguageRtl(res.language);
+                  setStyleOptions(prev => ({ ...prev, isRtl: rtl }));
+
+                  setHistory([initialSegments]);
+                  setHistoryIndex(0);
+                  setHasVideo(true);
+                  setActiveTab('dialogue');
+
+                  if (targetLanguage && targetLanguage !== 'none') {
+                    handlePerformTranslation(targetLanguage);
+                  }
+                } else if (job.status === 'failed') {
+                  clearInterval(interval);
+                  runCloudDemoSimulation(file, localPreviewUrl, language, targetLanguage);
+                }
+              } catch (pollErr) {
+                console.error('Job polling error:', pollErr);
+              }
+            }, 1200);
+            return;
+          }
+        } catch (backendErr) {
+          console.warn('Direct Whisper backend connection note:', backendErr);
+        }
+      }
+
+      // 3. Fallback when static deployment has no active backend server
+      runCloudDemoSimulation(file, localPreviewUrl, language, targetLanguage);
 
     } catch (err) {
       console.warn('Backend service recovery:', err);
@@ -797,6 +792,33 @@ function AppContent() {
     }, 1200);
   };
 
+  // Launch live voice speech tracking session
+  const handleStartLiveVoiceSession = (lang = 'en') => {
+    const langCode = typeof lang === 'string' ? lang : 'en';
+    const langNames = {
+      te: 'Telugu (తెలుగు)',
+      hi: 'Hindi (हिन्दी)',
+      ta: 'Tamil (தமிழ்)',
+      es: 'Spanish (Español)',
+      en: 'English (US)'
+    };
+    const resolvedName = langNames[langCode] || 'English (Live Speech)';
+
+    setVideoFilename('Live Voice Recording');
+    setVideoSrc(null);
+    setOriginalSegments([]);
+    setTranslatedSegments([]);
+    setDetectedLanguage(resolvedName);
+    setDetectedLanguageConfidence(1.0);
+    setTranslations({});
+    setActiveTrack('original');
+    setHistory([[]]);
+    setHistoryIndex(0);
+    setHasVideo(true);
+    setActiveTab('dialogue');
+    setActiveView('studio');
+  };
+
   // Seek video to specific timestamp
   const handleSeek = (seconds, autoPlay = false) => {
     if (videoRef.current) {
@@ -907,6 +929,7 @@ function AppContent() {
               <VideoUploader
                 onStartTranscription={handleStartTranscription}
                 onUseSampleVideo={handleUseSampleVideo}
+                onStartLiveVoiceSession={handleStartLiveVoiceSession}
               />
             ) : (
               <div className="studio-container">
@@ -1057,6 +1080,20 @@ function AppContent() {
                         </span>
                       )}
                     </div>
+                  </div>
+
+                  {/* Live Speech Auto-Tracker: allows user to speak anything into microphone */}
+                  <div style={{ marginTop: '14px' }}>
+                    <LiveVoiceAutoTracker
+                      currentTime={currentTime}
+                      videoRef={videoRef}
+                      isRtl={styleOptions.isRtl}
+                      detectedLanguage={detectedLanguage}
+                      onAddSegment={(newSeg) => {
+                        const updated = [...currentDisplaySegments, newSeg].sort((a, b) => a.start - b.start);
+                        updateSegmentsWithHistory(updated);
+                      }}
+                    />
                   </div>
                 </div>
 
