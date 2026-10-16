@@ -17,3 +17,10 @@ export const WS_BASE = import.meta.env.VITE_WS_URL
   || (isLocal 
       ? 'ws://127.0.0.1:8000' 
       : (isBrowser && window.location.protocol === 'https:' ? `wss://${window.location.host}` : `ws://${isBrowser ? window.location.host : 'localhost'}`));
+
+export const isNetlify = isBrowser && (
+  window.location.hostname.includes('netlify.app') || 
+  window.location.hostname.includes('netlify')
+);
+
+export const hasLiveBackend = Boolean(import.meta.env.VITE_API_URL || isLocal);
