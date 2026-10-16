@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Futuristic Dark Login | Neural Auth</title>
+  <meta name="description" content="A modern, premium, futuristic dark login page with symmetrical circuit board background and precise compact dimensions.">
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- 8. Background Circuit Lines (1px, #222222, 3-4px dots, 48x22px outer boxes) -->
+  <div class="circuit-container" aria-hidden="true">
+    <svg class="circuit-svg" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+      <!-- Symmetrical Left Lines -->
+      <g stroke="#222222" stroke-width="1" fill="none">
+        <path d="M 60 450 H 320 L 460 380 H 600" />
+        <path d="M 60 410 H 260 L 380 280 H 600" />
+        <path d="M 60 490 H 260 L 380 620 H 600" />
+        <path d="M 180 200 H 360 L 480 320 H 600" />
+        <path d="M 180 700 H 360 L 480 580 H 600" />
+      </g>
+
+      <!-- Symmetrical Right Lines -->
+      <g stroke="#222222" stroke-width="1" fill="none">
+        <path d="M 1380 450 H 1120 L 980 380 H 840" />
+        <path d="M 1380 410 H 1180 L 1060 280 H 840" />
+        <path d="M 1380 490 H 1180 L 1060 620 H 840" />
+        <path d="M 1260 200 H 1080 L 960 320 H 840" />
+        <path d="M 1260 700 H 1080 L 960 580 H 840" />
+      </g>
+
+      <!-- Connection Dots (3-4px) -->
+      <g fill="#FFFFFF" opacity="0.8">
+        <circle cx="320" cy="450" r="1.8" />
+        <circle cx="460" cy="380" r="1.8" />
+        <circle cx="260" cy="410" r="1.8" />
+        <circle cx="380" cy="280" r="1.8" />
+        <circle cx="260" cy="490" r="1.8" />
+        <circle cx="380" cy="620" r="1.8" />
+        <circle cx="1120" cy="450" r="1.8" />
+        <circle cx="980" cy="380" r="1.8" />
+        <circle cx="1180" cy="410" r="1.8" />
+        <circle cx="1060" cy="280" r="1.8" />
+        <circle cx="1180" cy="490" r="1.8" />
+        <circle cx="1060" cy="620" r="1.8" />
+      </g>
+
+      <!-- Outer Decorative Boxes (~48px x 22px) -->
+      <g fill="#141414" stroke="#222222" stroke-width="1">
+        <rect x="30" y="439" width="48" height="22" rx="3" />
+        <rect x="1362" y="439" width="48" height="22" rx="3" />
+        <rect x="150" y="189" width="48" height="22" rx="3" />
+        <rect x="1242" y="189" width="48" height="22" rx="3" />
+      </g>
+    </svg>
+  </div>
+
+  <!-- Main Viewport: Centered Card -->
+  <main class="page-wrapper">
+    <!-- 1. Main Login Card: 220px x 245px -->
+    <div class="login-card" id="loginCard">
+      
+      <!-- Top Section -->
+      <div class="card-header">
+        <!-- 2. Logo Box: 28px x 28px, border-radius 7px, 10px margin-bottom -->
+        <div class="logo-wrapper">
+          <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="12 2 2 7 12 12 22 7 12 2" />
+            <polyline points="2 17 12 22 22 17" />
+            <polyline points="2 12 12 17 22 12" />
+          </svg>
+        </div>
+
+        <h1 class="card-heading" id="cardHeading">Welcome Back</h1>
+        <p class="card-subtitle" id="cardSubtitle">
+          <span id="subtitleText">Don't have an account yet?</span>
+          <button type="button" class="auth-toggle-btn" id="toggleAuthMode">Sign up</button>
+        </p>
+      </div>
+
+      <!-- Alert -->
+      <div class="alert-message" id="alertBox" role="alert" aria-live="polite"></div>
+
+      <!-- Form -->
+      <form class="auth-form" id="authForm" novalidate>
+        
+        <!-- 3. Email Input Box with Symbol at the Last -->
+        <div class="input-container email-container" id="emailContainer">
+          <input 
+            type="email" 
+            id="emailInput" 
+            class="text-input" 
+            placeholder="Enter your email" 
+            required 
+            autocomplete="email"
+          />
+          <span class="input-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="20" height="16" x="2" y="4" rx="2" />
+              <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+            </svg>
+          </span>
+        </div>
+
+        <!-- 4. Password Input Box with Show Logo at the Last -->
+        <div class="input-container password-container" id="passwordContainer">
+          <input 
+            type="password" 
+            id="passwordInput" 
+            class="text-input" 
+            placeholder="Enter your password" 
+            required 
+            autocomplete="current-password"
+          />
+          <button 
+            type="button" 
+            class="password-toggle-btn" 
+            id="togglePassword" 
+            aria-label="Toggle password"
+          >
+            <svg class="eye-show" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            <svg class="eye-hide hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+              <line x1="2" x2="22" y1="2" y2="22" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- 5. Connect Button -->
+        <button type="submit" class="submit-btn" id="submitBtn">
+          <span class="btn-text" id="btnText">Connect to Website</span>
+        </button>
+
+      </form>
+
+      <!-- 6. OR Divider: 100% width, 15px height, font 7px -->
+      <div class="divider-wrapper" aria-hidden="true">
+        <div class="divider-line"></div>
+        <span class="divider-text">OR</span>
+        <div class="divider-line"></div>
+      </div>
+
+      <!-- 7. Social Login Boxes: 3 boxes, 61px x 20px, gap 6px, bg #292929, radius 4px, icons 9-11px -->
+      <div class="social-login-grid">
+        <!-- Apple -->
+        <button type="button" class="social-btn" id="appleAuthBtn" title="Apple" aria-label="Sign in with Apple">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.85c.67-.82 1.13-1.96 1-3.1-.98.04-2.17.65-2.87 1.47-.62.72-1.16 1.88-1.01 3 .02.01 1.09.08 2.88-1.37z"/>
+          </svg>
+        </button>
+
+        <!-- Google -->
+        <button type="button" class="social-btn" id="googleAuthBtn" title="Google" aria-label="Sign in with Google">
+          <svg viewBox="0 0 24 24">
+            <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z"/>
+            <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.7-.2-2.3H12v4.6h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.9z"/>
+            <path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.8s.2-2.1.4-2.8L1.9 6.3C.7 8.7 0 10.3 0 12s.7 3.3 1.9 5.7l3.7-2.9z"/>
+            <path fill="#34A853" d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.4-6.4-5.2L1.9 16c1.8 3.7 5.6 7 10.1 7z"/>
+          </svg>
+        </button>
+
+        <!-- X -->
+        <button type="button" class="social-btn" id="xAuthBtn" title="X" aria-label="Sign in with X">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+          </svg>
+        </button>
+      </div>
+
+    </div>
+
+    <!-- Small dev helper below card -->
+    <div class="demo-helper">
+      <button type="button" class="demo-pill" id="autofillDemoBtn">Auto-fill Demo</button>
+    </div>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>

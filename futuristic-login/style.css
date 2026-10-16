@@ -1,0 +1,484 @@
+/* ==========================================================================
+   FUTURISTIC DARK LOGIN PAGE - EXACT PIXEL PROPORTIONS SPECIFICATION
+   Dimensions:
+   Card: 220px x 245px | Logo: 28px x 28px
+   Email/Password: 100% x 23px | Login Button: 100% x 21px
+   Divider: 15px | Social Boxes: 61px x 20px (gap 6px)
+   ========================================================================== */
+
+:root {
+  --bg-primary: #0D0D0D;
+  --card-bg: #191919;
+  --input-bg: #101010;
+  --border-card: #262626;
+  --border-input: #262626;
+  --btn-primary: #087FE5;
+  --btn-primary-hover: #0770cb;
+  --social-bg: #292929;
+  --social-bg-hover: #333333;
+  --text-main: #FFFFFF;
+  --text-secondary: #888888;
+  --accent-cyan: #61D9FF;
+  --font-family: 'Plus Jakarta Sans', 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow-x: hidden;
+  background-color: var(--bg-primary);
+  color: var(--text-main);
+  font-family: var(--font-family);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ==========================================================================
+   8. BACKGROUND CIRCUIT LINES: 1px subtle #222222, 3-4px dots, 48x22px outer boxes
+   ========================================================================== */
+
+.circuit-container {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.circuit-svg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ==========================================================================
+   VIEWPORT WRAPPER
+   ========================================================================== */
+
+.page-wrapper {
+  position: relative;
+  z-index: 10;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+/* ==========================================================================
+   1. MAIN LOGIN CARD: 220px x 245px, #191919, 1px solid #262626, radius 7px, padding 12px
+   ========================================================================== */
+
+.login-card {
+  width: 220px;
+  max-width: calc(100vw - 32px);
+  height: 245px;
+  background-color: var(--card-bg);
+  border: 1px solid var(--border-card);
+  border-radius: 7px;
+  padding: 12px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 0, 0, 0.6);
+  position: relative;
+  animation: cardFadeIn 0.5s ease-out forwards;
+}
+
+@keyframes cardFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Header Section */
+.card-header {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* ==========================================================================
+   2. LOGO BOX: 28px x 28px, border-radius 7px, 10px below to heading
+   ========================================================================== */
+
+.logo-wrapper {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 35% 35%, #1e2532 0%, #12151c 100%);
+  border: 1px solid rgba(97, 217, 255, 0.45);
+  box-shadow: 0 0 10px rgba(97, 217, 255, 0.35);
+}
+
+.logo-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--accent-cyan);
+}
+
+/* Heading & Subtitle */
+.card-heading {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-main);
+  text-align: center;
+  letter-spacing: -0.01em;
+  margin-bottom: 2px;
+  line-height: 1;
+}
+
+.card-subtitle {
+  font-size: 7.5px;
+  color: var(--text-secondary);
+  text-align: center;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  line-height: 1;
+}
+
+.auth-toggle-btn {
+  background: transparent;
+  border: none;
+  color: var(--accent-cyan);
+  font-size: 7.5px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 1px;
+}
+
+.auth-toggle-btn:hover {
+  color: #FFFFFF;
+}
+
+/* Alert Notification Overlay */
+.alert-message {
+  position: absolute;
+  top: 4px;
+  left: 8px;
+  right: 8px;
+  font-size: 7px;
+  padding: 3px 6px;
+  border-radius: 3px;
+  display: none;
+  text-align: center;
+  z-index: 20;
+}
+
+.alert-message.error {
+  display: block;
+  background-color: rgba(220, 38, 38, 0.9);
+  color: #FFFFFF;
+  border: 1px solid rgba(255, 100, 100, 0.5);
+}
+
+.alert-message.success {
+  display: block;
+  background-color: rgba(16, 185, 129, 0.9);
+  color: #FFFFFF;
+  border: 1px solid rgba(100, 255, 180, 0.5);
+}
+
+/* ==========================================================================
+   FORM & INPUT BOXES: 100% width, 23px height, 6px padding, bg #101010, radius 5px, font 8px
+   ========================================================================== */
+
+.auth-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.input-container {
+  width: 100%;
+  height: 23px;
+  padding: 0 6px;
+  background-color: var(--input-bg);
+  border: 1px solid var(--border-input);
+  border-radius: 5px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: text;
+  transition: all 0.2s ease;
+}
+
+.input-container:hover {
+  border-color: #3b4252;
+}
+
+.input-container:focus-within {
+  border-color: #38bdf8;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.35);
+}
+
+.input-container:focus-within .input-icon {
+  color: #38bdf8;
+}
+
+/* 3. Email Input: mb 6px */
+.email-container {
+  margin-bottom: 6px;
+}
+
+/* 4. Password Input: mb 12px */
+.password-container {
+  margin-bottom: 12px;
+}
+
+.input-icon {
+  width: 10px;
+  height: 10px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+.input-icon svg {
+  width: 10px;
+  height: 10px;
+}
+
+.text-input {
+  width: 100%;
+  height: 100%;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  caret-color: #38bdf8 !important;
+  font-family: inherit;
+  cursor: text;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.text-input::placeholder {
+  color: #94a3b8 !important;
+  -webkit-text-fill-color: #94a3b8 !important;
+  font-size: 10px !important;
+  opacity: 1 !important;
+}
+
+.password-toggle-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.password-toggle-btn svg {
+  width: 10px;
+  height: 10px;
+}
+
+.password-toggle-btn:hover {
+  color: var(--text-main);
+}
+
+/* ==========================================================================
+   5. LOGIN BUTTON: 100% width, height 21px, bg #087FE5, radius 5px, font 9px, mt 2px
+   ========================================================================== */
+
+.submit-btn {
+  width: 100%;
+  height: 22px;
+  margin-top: 2px;
+  background: linear-gradient(135deg, #ec4899 0%, #f43f5e 50%, #db2777 100%);
+  color: #FFFFFF;
+  border: none;
+  border-radius: 5px;
+  font-size: 9px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  transition: all 0.15s ease;
+  box-shadow: 0 0 10px rgba(236, 72, 153, 0.45);
+}
+
+.submit-btn:hover {
+  background: linear-gradient(135deg, #f43f5e 0%, #fb7185 50%, #db2777 100%);
+  box-shadow: 0 0 16px rgba(244, 63, 94, 0.7);
+  transform: translateY(-0.5px);
+}
+
+.submit-btn:active {
+  transform: scale(0.98);
+}
+
+.submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ==========================================================================
+   6. OR DIVIDER: 100% width, height 15px, font-size 7px
+   ========================================================================== */
+
+.divider-wrapper {
+  width: 100%;
+  height: 15px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.divider-line {
+  flex: 1;
+  height: 1px;
+  background-color: #292929;
+}
+
+.divider-text {
+  font-size: 7px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.05em;
+  line-height: 1;
+}
+
+/* ==========================================================================
+   7. SOCIAL LOGIN BOXES: 3 boxes, 61px x 20px, gap 6px, bg #292929, radius 4px, icons 9-11px
+   ========================================================================== */
+
+.social-login-grid {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.social-btn {
+  width: 61px;
+  height: 20px;
+  background-color: var(--social-bg);
+  border: 1px solid #333333;
+  border-radius: 4px;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.social-btn:hover {
+  background-color: var(--social-bg-hover);
+  border-color: #4a4a4a;
+}
+
+.social-btn svg {
+  width: 10px;
+  height: 10px;
+}
+
+/* Colorful Google Button */
+#googleAuthBtn {
+  position: relative;
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 0 8px rgba(66, 133, 244, 0.2);
+}
+
+#googleAuthBtn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #4285F4, #EA4335, #FBBC05, #34A853);
+}
+
+#googleAuthBtn:hover {
+  background-color: #f8faff;
+  border-color: #4285F4;
+  box-shadow: 0 0 14px rgba(66, 133, 244, 0.5), 0 0 8px rgba(234, 67, 53, 0.35);
+  transform: translateY(-0.5px);
+}
+
+#googleAuthBtn svg {
+  width: 11px;
+  height: 11px;
+}
+
+/* Developer test shortcut */
+.demo-helper {
+  margin-top: 10px;
+  display: flex;
+  gap: 6px;
+}
+
+.demo-pill {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  border: 1px solid rgba(52, 211, 153, 0.4);
+  color: #FFFFFF;
+  font-size: 8px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.35);
+}
+
+.demo-pill:hover {
+  background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%);
+  box-shadow: 0 0 14px rgba(16, 185, 129, 0.6);
+  transform: translateY(-0.5px);
+}
+
+/* ==========================================================================
+   9. RESPONSIVE SIZING
+   Desktop: 220px | Tablet: 220px, max calc(100vw - 32px) | Mobile: min(220px, calc(100vw - 32px))
+   ========================================================================== */
+
+@media (max-width: 480px) {
+  .login-card {
+    width: min(220px, calc(100vw - 32px));
+  }
+}

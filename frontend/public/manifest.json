@@ -1,0 +1,19 @@
+{
+  "short_name": "Subtitles AI",
+  "name": "Universal AI Video Subtitles Generator",
+  "description": "Multi-OS Universal AI Video Subtitle Generator & Studio",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "display": "standalone",
+  "orientation": "any",
+  "categories": ["utilities", "productivity", "video"]
+}
