@@ -34,10 +34,19 @@ export function DialogueTracker({
   const isUserScrollingRef = useRef(false);
   const scrollTimeoutRef = useRef(null);
 
-  // Find active segment
-  const activeSegmentIndex = segments.findIndex(
-    seg => currentTime >= seg.start && currentTime <= seg.end
-  );
+  // Find active segment with gap bridging
+  const activeSegmentIndex = (() => {
+    if (!segments || segments.length === 0) return -1;
+    let idx = segments.findIndex(
+      seg => currentTime >= parseFloat(seg.start) && currentTime <= parseFloat(seg.end)
+    );
+    if (idx === -1) {
+      idx = segments.findIndex(
+        seg => currentTime >= parseFloat(seg.end) && currentTime <= (parseFloat(seg.end) + 0.35)
+      );
+    }
+    return idx;
+  })();
   const activeSegment = activeSegmentIndex !== -1 ? segments[activeSegmentIndex] : null;
   const nextSegment = activeSegmentIndex !== -1 && activeSegmentIndex + 1 < segments.length 
     ? segments[activeSegmentIndex + 1] 
@@ -46,20 +55,28 @@ export function DialogueTracker({
   // Calculate percentage of progress through the current dialogue
   let dialogueProgress = 0;
   if (activeSegment) {
-    const totalSegTime = activeSegment.end - activeSegment.start;
-    const elapsed = currentTime - activeSegment.start;
-    if (totalSegTime > 0) {
-      dialogueProgress = Math.min(100, Math.max(0, (elapsed / totalSegTime) * 100));
-    }
+    const totalSegTime = Math.max(0.01, activeSegment.end - activeSegment.start);
+    const elapsed = Math.max(0, currentTime - activeSegment.start);
+    dialogueProgress = Math.min(100, Math.max(0, (elapsed / totalSegTime) * 100));
   }
 
   const scrollToActive = useCallback((force = false) => {
-    if (activeDialogueRef.current && containerRef.current) {
-      if (isUserScrollingRef.current && !force) return;
-      const container = containerRef.current;
-      const element = activeDialogueRef.current;
-      const targetTop = element.offsetTop - (container.clientHeight / 2) + (element.clientHeight / 2);
-      container.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
+    if (!activeDialogueRef.current || !containerRef.current) return;
+    if (isUserScrollingRef.current && !force) return;
+
+    const container = containerRef.current;
+    const element = activeDialogueRef.current;
+
+    const elementRect = element.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+
+    const distFromCenter = Math.abs(
+      (elementRect.top + elementRect.height / 2) - (containerRect.top + containerRect.height / 2)
+    );
+
+    if (distFromCenter > 30 || force) {
+      const offset = (elementRect.top - containerRect.top) - (containerRect.height / 2) + (elementRect.height / 2);
+      container.scrollBy({ top: offset, behavior: 'smooth' });
     }
   }, []);
 
@@ -410,7 +427,7 @@ export function DialogueTracker({
 
                     {/* Quick Seek / Play Button */}
                     <button
-                      onClick={() => onSeek(seg.start)}
+                      onClick={() => onSeek(seg.start, true)}
                       style={{
                         background: isActive ? 'linear-gradient(135deg, #06b6d4, #6366f1)' : 'rgba(6, 182, 212, 0.12)',
                         border: `1px solid ${isActive ? '#22d3ee' : 'rgba(6, 182, 212, 0.3)'}`,

@@ -61,40 +61,36 @@ export function SubtitleEditor({
   );
   const activeId = activeSegment ? activeSegment.id : null;
 
-  // Gentle auto-scroll ONLY when active segment changes to a different line
+  const scrollToActive = useCallback((force = false) => {
+    if (!activeItemRef.current || !listContainerRef.current) return;
+    if (isUserInteractingRef.current && !force) return;
+
+    const container = listContainerRef.current;
+    const element = activeItemRef.current;
+
+    const elementRect = element.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+
+    const distFromCenter = Math.abs(
+      (elementRect.top + elementRect.height / 2) - (containerRect.top + containerRect.height / 2)
+    );
+
+    if (distFromCenter > 40 || force) {
+      const offset = (elementRect.top - containerRect.top) - (containerRect.height / 2) + (elementRect.height / 2);
+      container.scrollBy({ top: offset, behavior: 'smooth' });
+    }
+  }, []);
+
+  // Gentle auto-scroll when active segment changes to a different line
   useEffect(() => {
-    if (!autoScroll || !activeId || isUserInteractingRef.current) return;
+    if (!autoScroll || !activeId) return;
 
     // Only scroll if active segment ID changed
     if (activeId !== lastActiveIdRef.current) {
       lastActiveIdRef.current = activeId;
-
-      if (activeItemRef.current && listContainerRef.current) {
-        const container = listContainerRef.current;
-        const element = activeItemRef.current;
-
-        const elementRect = element.getBoundingClientRect();
-        const containerRect = container.getBoundingClientRect();
-
-        // Check if element is already comfortably within visible bounds
-        const isComfortablyVisible = (
-          elementRect.top >= containerRect.top + 50 &&
-          elementRect.bottom <= containerRect.bottom - 50
-        );
-
-        if (!isComfortablyVisible) {
-          const currentScroll = container.scrollTop;
-          const elementOffsetTop = element.offsetTop;
-          const targetTop = elementOffsetTop - (container.clientHeight / 2) + (element.clientHeight / 2);
-
-          container.scrollTo({
-            top: Math.max(0, targetTop),
-            behavior: 'smooth'
-          });
-        }
-      }
+      scrollToActive();
     }
-  }, [activeId, autoScroll]);
+  }, [activeId, autoScroll, scrollToActive]);
 
   // Detect user manual wheel or touch scroll to temporarily pause auto-scroll
   const handleUserScroll = () => {
@@ -207,13 +203,9 @@ export function SubtitleEditor({
 
   // Jump to active segment immediately
   const handleJumpToActive = () => {
+    setAutoScroll(true);
     isUserInteractingRef.current = false;
-    if (activeItemRef.current && listContainerRef.current) {
-      const container = listContainerRef.current;
-      const element = activeItemRef.current;
-      const targetTop = element.offsetTop - (container.clientHeight / 2) + (element.clientHeight / 2);
-      container.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
-    }
+    scrollToActive(true);
   };
 
   const totalWords = segments.reduce((acc, s) => acc + (s.text ? s.text.trim().split(/\s+/).length : 0), 0);
@@ -513,7 +505,7 @@ export function SubtitleEditor({
                       #{idx + 1}
                     </span>
                     <button
-                      onClick={() => onSeek(seg.start)}
+                      onClick={() => onSeek(seg.start, true)}
                       style={{
                         background: isActive ? 'linear-gradient(135deg, #06b6d4, #3b82f6)' : 'rgba(6, 182, 212, 0.12)',
                         border: `1px solid ${isActive ? '#22d3ee' : 'rgba(6, 182, 212, 0.3)'}`,
@@ -528,7 +520,7 @@ export function SubtitleEditor({
                         boxShadow: isActive ? '0 0 10px rgba(6, 182, 212, 0.5)' : 'none',
                         transition: 'all 0.15s ease'
                       }}
-                      title="Seek video to this subtitle"
+                      title="Play video from this subtitle"
                     >
                       <Play size={12} fill={isActive ? '#000000' : 'currentColor'} />
                     </button>

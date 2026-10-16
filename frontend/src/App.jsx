@@ -265,13 +265,13 @@ function AppContent() {
 
     const targetDuration = Math.max(30, totalDuration);
     const segments = [];
-    let cur = 0.5;
+    let cur = 0.0;
     let idx = 0;
 
-    while (cur < targetDuration - 0.8) {
+    while (cur < targetDuration - 0.5) {
       const text = pool[idx % pool.length];
       const wordCount = text.split(' ').length;
-      const segLength = parseFloat(Math.min(4.2, Math.max(2.2, wordCount * 0.42)).toFixed(2));
+      const segLength = parseFloat(Math.min(4.0, Math.max(2.4, wordCount * 0.42)).toFixed(2));
       const end = parseFloat(Math.min(targetDuration, cur + segLength).toFixed(2));
 
       segments.push({
@@ -281,7 +281,7 @@ function AppContent() {
         text: text
       });
 
-      cur = parseFloat((end + 0.35).toFixed(2));
+      cur = parseFloat((end + 0.15).toFixed(2));
       idx++;
     }
 
@@ -798,10 +798,13 @@ function AppContent() {
   };
 
   // Seek video to specific timestamp
-  const handleSeek = (seconds) => {
+  const handleSeek = (seconds, autoPlay = false) => {
     if (videoRef.current) {
       videoRef.current.currentTime = seconds;
       setCurrentTime(seconds);
+      if (autoPlay && videoRef.current.paused) {
+        videoRef.current.play().catch(() => {});
+      }
     }
   };
 

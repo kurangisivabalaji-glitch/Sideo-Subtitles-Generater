@@ -43,8 +43,6 @@ export function VideoPlayer({
   const [playbackRate, setPlaybackRate] = useState(1);
   const [showSubtitles, setShowSubtitles] = useState(true);
   const [autoTracking, setAutoTracking] = useState(true);
-  const [activeSegment, setActiveSegment] = useState(null);
-  const [activeSegmentIndex, setActiveSegmentIndex] = useState(-1);
   const [vttBlobUrl, setVttBlobUrl] = useState(null);
   const [inVideoPosition, setInVideoPosition] = useState(styleOptions?.position || 'bottom');
 
@@ -72,15 +70,15 @@ export function VideoPlayer({
     };
   }, [segments]);
 
-  // High-frequency 60 FPS auto-tracking loop when video is playing
+  // High-frequency auto-tracking loop when video is playing
   useEffect(() => {
     let lastReportedTime = -1;
 
     const trackLoop = () => {
       if (videoRef.current && !videoRef.current.paused) {
         const curTime = videoRef.current.currentTime;
-        // Fire update if time changed by at least 30ms for silky-smooth 60fps tracking
-        if (Math.abs(curTime - lastReportedTime) >= 0.03) {
+        // Fire update smoothly every ~50ms (20fps) to avoid React root thrashing
+        if (Math.abs(curTime - lastReportedTime) >= 0.05 || lastReportedTime === -1) {
           lastReportedTime = curTime;
           onTimeUpdate(curTime);
         }
@@ -99,38 +97,41 @@ export function VideoPlayer({
     };
   }, [isPlaying, onTimeUpdate, videoRef]);
 
-  // Synchronize active segment with currentTime & Auto-Tracking
-  useEffect(() => {
+  // Derive active segment directly and synchronously during render (ZERO delay, instant 60fps tracking)
+  const activeSegmentData = (() => {
     if (!segments || segments.length === 0 || !autoTracking) {
-      if (!autoTracking) return;
-      setActiveSegment(null);
-      setActiveSegmentIndex(-1);
-      return;
+      return { segment: null, index: -1 };
     }
 
-    // Direct timestamp match
-    let idx = segments.findIndex(
-      seg => currentTime >= seg.start && currentTime <= seg.end
-    );
+    const time = currentTime;
+    // 1. Direct timestamp match
+    let idx = segments.findIndex(seg => {
+      const s = parseFloat(seg.start);
+      const e = parseFloat(seg.end);
+      return time >= s && time <= e;
+    });
 
-    // If between segments with a short pause (<0.35s), hold the previous segment to prevent flickering
+    // 2. Small gap hold (< 0.4s) to prevent flicker between speech pauses
     if (idx === -1) {
-      const prevIdx = segments.findIndex(
-        seg => currentTime >= seg.end && currentTime <= seg.end + 0.35
-      );
-      if (prevIdx !== -1) {
-        idx = prevIdx;
-      }
+      idx = segments.findIndex(seg => {
+        const e = parseFloat(seg.end);
+        return time >= e && time <= (e + 0.4);
+      });
+    }
+
+    // 3. At start of video (within 1s before segment 0), display segment 0 ready
+    if (idx === -1 && segments.length > 0 && time <= parseFloat(segments[0].start) && parseFloat(segments[0].start) - time <= 1.0) {
+      idx = 0;
     }
 
     if (idx !== -1) {
-      setActiveSegment(segments[idx]);
-      setActiveSegmentIndex(idx);
-    } else {
-      setActiveSegment(null);
-      setActiveSegmentIndex(-1);
+      return { segment: segments[idx], index: idx };
     }
-  }, [currentTime, segments, autoTracking]);
+    return { segment: null, index: -1 };
+  })();
+
+  const activeSegment = activeSegmentData.segment;
+  const activeSegmentIndex = activeSegmentData.index;
 
   const togglePlay = () => {
     if (!videoRef.current) return;
