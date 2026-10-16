@@ -9,6 +9,7 @@ import {
   Layers,
   Code
 } from 'lucide-react';
+import { API_BASE } from '../utils/apiConfig';
 
 export function ExportModal({
   originalSegments,
@@ -44,9 +45,37 @@ export function ExportModal({
     currentLangLabel = translatedLanguage || 'translated';
   }
 
+  const downloadClientFile = (content, filename, mimeType) => {
+    const blob = new Blob([content], { type: mimeType });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  };
+
   const downloadFile = async (format) => {
+    const pad = (n, w = 2) => String(n).padStart(w, '0');
+    const toSrtTime = (sec) => {
+      const h = Math.floor(sec / 3600);
+      const m = Math.floor((sec % 3600) / 60);
+      const s = Math.floor(sec % 60);
+      const ms = Math.floor((sec % 1) * 1000);
+      return `${pad(h)}:${pad(m)}:${pad(s)},${pad(ms, 3)}`;
+    };
+    const toVttTime = (sec) => {
+      const h = Math.floor(sec / 3600);
+      const m = Math.floor((sec % 3600) / 60);
+      const s = Math.floor(sec % 60);
+      const ms = Math.floor((sec % 1) * 1000);
+      return `${pad(h)}:${pad(m)}:${pad(s)}.${pad(ms, 3)}`;
+    };
+
     try {
-      const response = await fetch(`/api/export/${format}`, {
+      const response = await fetch(`${API_BASE}/api/export/${format}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -66,8 +95,24 @@ export function ExportModal({
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-    } catch (err) {
-      alert(`Error exporting file: ${err.message}`);
+    } catch {
+      // Instant Client-side file generator fallback for Netlify cloud demo
+      if (format === 'srt') {
+        const content = currentSegments.map((s, i) => `${i + 1}\n${toSrtTime(s.start)} --> ${toSrtTime(s.end)}\n${s.text}\n`).join('\n');
+        downloadClientFile(content, `subtitles_${currentLangLabel}.srt`, 'text/plain;charset=utf-8');
+      } else if (format === 'vtt') {
+        const content = 'WEBVTT\n\n' + currentSegments.map((s, i) => `${i + 1}\n${toVttTime(s.start)} --> ${toVttTime(s.end)}\n${s.text}\n`).join('\n');
+        downloadClientFile(content, `subtitles_${currentLangLabel}.vtt`, 'text/vtt;charset=utf-8');
+      } else if (format === 'txt') {
+        const content = currentSegments.map(s => s.text).join('\n');
+        downloadClientFile(content, `subtitles_${currentLangLabel}.txt`, 'text/plain;charset=utf-8');
+      } else if (format === 'json') {
+        const content = JSON.stringify(currentSegments, null, 2);
+        downloadClientFile(content, `subtitles_${currentLangLabel}.json`, 'application/json');
+      } else {
+        const content = currentSegments.map(s => s.text).join('\n');
+        downloadClientFile(content, `subtitles_${currentLangLabel}.${format}`, 'text/plain;charset=utf-8');
+      }
     }
   };
 
@@ -79,7 +124,7 @@ export function ExportModal({
     setBurnError(null);
 
     try {
-      const response = await fetch('/api/export/burn-video', {
+      const response = await fetch(`${API_BASE}/api/export/burn-video`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -103,7 +148,7 @@ export function ExportModal({
         setBurnProgress(100);
         const resolvedUrl = data.download_url.startsWith('http') 
           ? data.download_url 
-          : `http://127.0.0.1:8000${data.download_url}`;
+          : `${API_BASE}${data.download_url}`;
         setBurnDownloadUrl(resolvedUrl);
         setBurnStep('Burned video ready for download!');
         setIsBurning(false);
@@ -120,7 +165,7 @@ export function ExportModal({
       // Poll job status until completed
       const pollInterval = setInterval(async () => {
         try {
-          const jobRes = await fetch(`/api/jobs/${pollJobId}`);
+          const jobRes = await fetch(`${API_BASE}/api/jobs/${pollJobId}`);
           if (!jobRes.ok) return;
           const job = await jobRes.json();
 
@@ -132,7 +177,7 @@ export function ExportModal({
             setIsBurning(false);
             setBurnProgress(100);
             const dl = job.result?.download_url || `/media/outputs/${job.result?.filename}`;
-            setBurnDownloadUrl(dl.startsWith('http') ? dl : `http://127.0.0.1:8000${dl}`);
+            setBurnDownloadUrl(dl.startsWith('http') ? dl : `${API_BASE}${dl}`);
             setBurnStep('Burned video ready for download!');
           } else if (job.status === 'failed') {
             clearInterval(pollInterval);

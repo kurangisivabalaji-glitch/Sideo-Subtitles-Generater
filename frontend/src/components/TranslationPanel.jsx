@@ -20,6 +20,7 @@ import {
   Zap
 } from 'lucide-react';
 import { SUPPORTED_LANGUAGES, getLanguageName, isLanguageRtl } from '../utils/languages';
+import { API_BASE } from '../utils/apiConfig';
 
 export function TranslationPanel({
   originalSegments = [],
@@ -127,19 +128,49 @@ export function TranslationPanel({
 
   // Direct subtitle download (SRT / VTT)
   const handleDownloadTrack = async (format) => {
+    const segs = activeTrack === 'original' ? originalSegments : displaySegments;
+    const langName = activeTrack === 'original' ? (originalLanguage || 'original') : (currentTransTrack?.name || translatedLanguage || 'translated');
+    const safeLang = langName.toLowerCase().replace(/\s+/g, '_');
+
+    const pad = (n, w = 2) => String(n).padStart(w, '0');
+    const toSrtTime = (sec) => {
+      const h = Math.floor(sec / 3600);
+      const m = Math.floor((sec % 3600) / 60);
+      const s = Math.floor(sec % 60);
+      const ms = Math.floor((sec % 1) * 1000);
+      return `${pad(h)}:${pad(m)}:${pad(s)},${pad(ms, 3)}`;
+    };
+    const toVttTime = (sec) => {
+      const h = Math.floor(sec / 3600);
+      const m = Math.floor((sec % 3600) / 60);
+      const s = Math.floor(sec % 60);
+      const ms = Math.floor((sec % 1) * 1000);
+      return `${pad(h)}:${pad(m)}:${pad(s)}.${pad(ms, 3)}`;
+    };
+
+    const downloadDirect = (content, filename, mime) => {
+      const blob = new Blob([content], { type: mime });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    };
+
     try {
-      const segs = activeTrack === 'original' ? originalSegments : displaySegments;
-      const langName = activeTrack === 'original' ? (originalLanguage || 'original') : (currentTransTrack?.name || translatedLanguage || 'translated');
       const token = localStorage.getItem('subtitle_platform_token');
       const headers = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
-      const res = await fetch(`/api/export/${format}`, {
+      const res = await fetch(`${API_BASE}/api/export/${format}`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
           segments: segs,
-          filename: `subtitles_${langName.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}`
+          filename: `subtitles_${safeLang}_${Date.now()}`
         })
       });
       if (!res.ok) throw new Error('Export failed');
@@ -147,13 +178,26 @@ export function TranslationPanel({
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `subtitles_${langName.toLowerCase().replace(/\s+/g, '_')}.${format}`;
+      a.download = `subtitles_${safeLang}.${format}`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-    } catch (e) {
-      alert(`Download failed: ${e.message}`);
+    } catch {
+      // Client-side export fallback
+      if (format === 'srt') {
+        const content = segs.map((s, i) => `${i + 1}\n${toSrtTime(s.start)} --> ${toSrtTime(s.end)}\n${s.text}\n`).join('\n');
+        downloadDirect(content, `subtitles_${safeLang}.srt`, 'text/plain;charset=utf-8');
+      } else if (format === 'vtt') {
+        const content = 'WEBVTT\n\n' + segs.map((s, i) => `${i + 1}\n${toVttTime(s.start)} --> ${toVttTime(s.end)}\n${s.text}\n`).join('\n');
+        downloadDirect(content, `subtitles_${safeLang}.vtt`, 'text/vtt;charset=utf-8');
+      } else if (format === 'txt') {
+        const content = segs.map(s => s.text).join('\n');
+        downloadDirect(content, `subtitles_${safeLang}.txt`, 'text/plain;charset=utf-8');
+      } else {
+        const content = JSON.stringify(segs, null, 2);
+        downloadDirect(content, `subtitles_${safeLang}.json`, 'application/json');
+      }
     }
   };
 
@@ -187,7 +231,7 @@ export function TranslationPanel({
       const headers = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
-      const res = await fetch('/api/translate/convert-subtitles', {
+      const res = await fetch(`${API_BASE}/api/translate/convert-subtitles`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
