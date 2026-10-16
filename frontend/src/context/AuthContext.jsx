@@ -171,16 +171,34 @@ export function AuthProvider({ children }) {
   };
 
   const socialLogin = async (provider, email, fullName = null, avatarUrl = null) => {
-    const cleanEmail = (email && email.includes('@')) ? email.toLowerCase().trim() : `${provider.toLowerCase()}@subtitles.ai`;
-    const cleanName = fullName || (cleanEmail.includes('@') ? cleanEmail.split('@')[0].replace(/[._-]/g, ' ') : 'Google User');
-    const googleAvatar = avatarUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(cleanName)}&backgroundColor=4285f4,34a853,fbbc05,ea4335`;
+    const validProvider = (typeof provider === 'string' && provider.trim()) ? provider.trim().toLowerCase() : 'google';
+
+    let cleanEmail = 'kurangisivabalaji@gmail.com';
+    if (typeof email === 'string' && email.includes('@')) {
+      cleanEmail = email.trim().toLowerCase();
+    } else if (typeof email === 'string' && email.trim()) {
+      cleanEmail = `${email.trim().toLowerCase()}@gmail.com`;
+    }
+
+    let cleanName = 'Kurangi Siva Balaji';
+    if (typeof fullName === 'string' && fullName.trim()) {
+      cleanName = fullName.trim();
+    } else {
+      const prefix = cleanEmail.split('@')[0].replace(/[._-]/g, ' ');
+      cleanName = prefix.charAt(0).toUpperCase() + prefix.slice(1);
+    }
+
+    const googleAvatar = (typeof avatarUrl === 'string' && avatarUrl)
+      ? avatarUrl
+      : `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(cleanName)}&backgroundColor=4285f4,34a853,fbbc05,ea4335`;
+
     const fallbackUser = {
-      id: `usr_${provider}_` + Math.random().toString(36).substring(2, 9),
+      id: `usr_${validProvider}_` + Math.random().toString(36).substring(2, 9),
       email: cleanEmail,
-      full_name: cleanName.charAt(0).toUpperCase() + cleanName.slice(1),
+      full_name: cleanName,
       avatar_url: googleAvatar,
-      provider: provider || 'google',
-      role: cleanEmail.toLowerCase().includes('admin') ? 'admin' : 'user',
+      provider: validProvider,
+      role: cleanEmail.includes('admin') ? 'admin' : 'user',
       tier: 'pro',
       created_at: new Date().toISOString()
     };

@@ -102,28 +102,33 @@ export function SignInGateway() {
 
   const handleGoogleSignIn = async (forcedEmail = null, forcedName = null) => {
     setError(null);
-
-    // If no specific email is provided and main input does not have an @, open account chooser
-    if (!forcedEmail && !emailOrUsername.includes('@')) {
-      setShowGoogleModal(true);
-      return;
-    }
-
     setLoading(true);
     setGoogleConnecting(true);
+
     try {
-      const email = forcedEmail 
-        || (emailOrUsername.includes('@') ? emailOrUsername.toLowerCase().trim() : 'user.google@gmail.com');
-      const name = forcedName 
-        || (email.includes('@') ? email.split('@')[0].replace(/[._-]/g, ' ') : 'Google Creator');
-      
-      await socialLogin('google', email, name);
+      const validForcedEmail = (typeof forcedEmail === 'string' && forcedEmail.includes('@')) 
+        ? forcedEmail.trim().toLowerCase() 
+        : null;
+
+      const currentInputEmail = (typeof emailOrUsername === 'string' && emailOrUsername.includes('@')) 
+        ? emailOrUsername.trim().toLowerCase() 
+        : null;
+
+      const emailToUse = validForcedEmail || currentInputEmail || 'kurangisivabalaji@gmail.com';
+
+      const validForcedName = (typeof forcedName === 'string' && forcedName.trim()) 
+        ? forcedName.trim() 
+        : null;
+
+      const defaultName = emailToUse.split('@')[0].replace(/[._-]/g, ' ');
+      const nameToUse = validForcedName || (defaultName.charAt(0).toUpperCase() + defaultName.slice(1));
+
+      await socialLogin('google', emailToUse, nameToUse);
       setShowGoogleModal(false);
     } catch (err) {
       console.warn('Google sign-in recovery:', err);
-      // Fallback guarantees user is logged in
       try {
-        await socialLogin('google', forcedEmail || 'user.google@gmail.com', forcedName || 'Google User');
+        await socialLogin('google', 'kurangisivabalaji@gmail.com', 'Kurangi Siva Balaji');
         setShowGoogleModal(false);
       } catch (e) {
         console.error('Final google login catch:', e);
@@ -442,7 +447,7 @@ export function SignInGateway() {
               ============================================================= */}
           <button
             type="button"
-            onClick={handleGoogleSignIn}
+            onClick={() => handleGoogleSignIn()}
             disabled={loading}
             className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-white via-slate-50 to-white hover:from-white hover:to-blue-50 text-[#1f2937] font-semibold text-xs flex items-center justify-center gap-2.5 transition-all shadow-[0_2px_10px_rgba(0,0,0,0.25)] hover:shadow-[0_0_25px_rgba(66,133,244,0.45),0_0_12px_rgba(234,67,53,0.3)] hover:scale-[1.01] active:scale-[0.985] cursor-pointer disabled:opacity-60 relative overflow-hidden group border border-slate-200"
           >
@@ -462,6 +467,17 @@ export function SignInGateway() {
               Continue with Google
             </span>
           </button>
+
+          {/* Switch Google Account Link */}
+          <div className="text-center mt-1.5">
+            <button
+              type="button"
+              onClick={() => setShowGoogleModal(true)}
+              className="text-[11px] text-slate-400 hover:text-blue-400 transition-colors underline decoration-slate-600 hover:decoration-blue-400 cursor-pointer"
+            >
+              Choose different Google account
+            </button>
+          </div>
 
           {/* =============================================================
               VIBRANT GREEN "Demo User" and "Demo Admin" BUTTONS
