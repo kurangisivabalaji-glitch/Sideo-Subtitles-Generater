@@ -22,16 +22,19 @@ import {
   Zap,
   Users,
   Plus,
-  Trash2
+  Trash2,
+  Wand2
 } from 'lucide-react';
 import { formatDisplayTime, formatPreciseTime } from '../utils/timeUtils';
 import { getLanguageDetails } from '../utils/languages';
+import { fixAllSubtitleSegments, cleanAndFixSubtitleText } from '../utils/spellChecker';
 
 export function DialogueTracker({
   segments = [],
   currentTime = 0,
   onSeek,
   onUpdateText,
+  onUpdateAllSegments,
   onAddSegment,
   onDeleteSegment,
   onRenameSpeaker,
@@ -142,12 +145,27 @@ export function DialogueTracker({
     setEditText(seg.text);
   };
 
-  // Save edited segment
+  const [fixedSpellingNotice, setFixedSpellingNotice] = useState(false);
+
+  // Save edited segment with spell & grammar cleanup
   const handleSaveEdit = (segId) => {
     if (onUpdateText && editText.trim()) {
-      onUpdateText(segId, editText.trim());
+      const cleaned = cleanAndFixSubtitleText(editText.trim(), languageName);
+      onUpdateText(segId, cleaned);
     }
     setEditingId(null);
+  };
+
+  // One-click batch fix spelling across all dialogue subtitles
+  const handleFixAllSpelling = () => {
+    const fixed = fixAllSubtitleSegments(segments, languageName);
+    if (onUpdateAllSegments) {
+      onUpdateAllSegments(fixed);
+    } else if (onUpdateText) {
+      fixed.forEach(s => onUpdateText(s.id, s.text));
+    }
+    setFixedSpellingNotice(true);
+    setTimeout(() => setFixedSpellingNotice(false), 2200);
   };
 
   // Copy full transcript
@@ -451,6 +469,17 @@ export function DialogueTracker({
               </button>
             )}
 
+            {/* Fix Spelling */}
+            <button
+              onClick={handleFixAllSpelling}
+              className="btn btn-soft-amber"
+              style={{ fontSize: '0.76rem', padding: '6px 11px', gap: '5px', fontWeight: 700 }}
+              title="Auto-fix common spelling mistakes, technical terms, and punctuation"
+            >
+              <Wand2 size={13} color="#f59e0b" />
+              <span>{fixedSpellingNotice ? '✓ Fixed Spelling!' : 'Fix Spelling'}</span>
+            </button>
+
             {/* Copy Script */}
             <button
               onClick={handleCopyScript}
@@ -740,6 +769,7 @@ export function DialogueTracker({
                         onChange={(e) => setEditText(e.target.value)}
                         rows={2}
                         dir={isRtl ? 'rtl' : 'ltr'}
+                        spellCheck={true}
                         style={{
                           width: '100%',
                           fontSize: '0.94rem',

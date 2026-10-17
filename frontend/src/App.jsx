@@ -1211,6 +1211,7 @@ function AppContent() {
                           const updated = currentDisplaySegments.filter(s => s.id !== id);
                           updateSegmentsWithHistory(updated);
                         }}
+                        onUpdateAllSegments={updateSegmentsWithHistory}
                         isRtl={styleOptions.isRtl}
                         languageName={detectedLanguage}
                         activeTrack={activeTrack}

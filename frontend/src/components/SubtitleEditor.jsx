@@ -15,9 +15,11 @@ import {
   LocateFixed,
   Languages,
   Sparkles,
-  Check
+  Check,
+  Wand2
 } from 'lucide-react';
 import { formatPreciseTime, parsePreciseTime } from '../utils/timeUtils';
+import { fixAllSubtitleSegments, cleanAndFixSubtitleText } from '../utils/spellChecker';
 
 export function SubtitleEditor({
   segments,
@@ -43,6 +45,14 @@ export function SubtitleEditor({
   const [quickTargetLang, setQuickTargetLang] = useState('te');
   const [isQuickTranslating, setIsQuickTranslating] = useState(false);
   const [autoScroll, setAutoScroll] = useState(true);
+  const [spellFixedNotice, setSpellFixedNotice] = useState(false);
+
+  const handleFixSpelling = () => {
+    const fixed = fixAllSubtitleSegments(segments, originalLanguage || 'en');
+    onUpdateSegments(fixed);
+    setSpellFixedNotice(true);
+    setTimeout(() => setSpellFixedNotice(false), 2200);
+  };
 
   const activeItemRef = useRef(null);
   const listContainerRef = useRef(null);
@@ -303,6 +313,17 @@ export function SubtitleEditor({
                 <Redo size={14} />
               </button>
             </div>
+
+            {/* AI Spell & Grammar Fix */}
+            <button
+              onClick={handleFixSpelling}
+              className="btn btn-soft-amber"
+              style={{ height: '32px', padding: '0 12px', fontSize: '0.78rem', gap: '5px', fontWeight: 700 }}
+              title="Auto-correct spelling, developer terms, grammar, and punctuation across all subtitles"
+            >
+              <Wand2 size={13} color="#f59e0b" />
+              <span>{spellFixedNotice ? '✓ Fixed Spelling!' : 'Fix Spelling'}</span>
+            </button>
           </div>
 
           {/* Stats & Active Track info */}
@@ -652,6 +673,7 @@ export function SubtitleEditor({
                   value={seg.text}
                   onChange={(e) => handleTextChange(seg.id, e.target.value)}
                   dir={isRtl ? 'rtl' : 'ltr'}
+                  spellCheck={true}
                   rows={2}
                   style={{
                     width: '100%',

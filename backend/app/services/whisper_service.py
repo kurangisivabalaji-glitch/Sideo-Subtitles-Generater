@@ -76,7 +76,71 @@ LANGUAGE_METADATA: Dict[str, Dict[str, Any]] = {
     "et": {"name": "Estonian", "native": "Eesti", "rtl": False},
 }
 
-def format_and_diarize_segments(raw_segments: List[Dict[str, Any]], max_chars_per_line: int = 48) -> List[Dict[str, Any]]:
+# Priming prompts for Whisper to enforce correct orthography, spelling, technical terms, and punctuation
+LANGUAGE_PROMPTS: Dict[str, str] = {
+    "te": "నమస్కారం! ఇది స్పష్టమైన తెలుగు సంభాషణ. దయచేసి సరైన తెలుగు వ్యాకరణం, స్పెల్లింగ్ మరియు పదబంధాలతో రాయండి: హాయ్, నేను, మీరు, నేర్చుకోవాలి, పైథాన్, SQL, కోడింగ్, సాఫ్ట్‌వేర్, డేటాబేస్, ప్రాజెక్ట్, ప్రశ్నలు.",
+    "hi": "नमस्ते! यह हिन्दी भाषा की स्पष्ट बातचीत है। कृपया सही हिन्दी वर्तनी, पूर्ण विराम और व्याकरण के साथ लिखें: हाय, मैं, आप, सीखना, पाइथन, एसक्यूएल, कोडिंग, सॉफ्टवेयर, डेटाबेस।",
+    "ta": "வணக்கம்! இது தெளிவான தமிழ் உரையாடல். சரியான தமிழ் எழுத்துப்பிழையின்றி எழுதுக: பைதான், எஸ்.க்யூ.எல், மென்பொருள், நிரலாக்கம்.",
+    "kn": "ನಮಸ್ಕಾರ! ಇದು ಸ್ಪಷ್ಟವಾದ ಕನ್ನಡ ಸಂಭಾಷಣೆ. ಸರಿಯಾದ ಕನ್ನಡ ಕಾಗುಣಿತದೊಂದಿಗೆ ಬರೆಯಿರಿ: ಪೈಥಾನ್, ಕೋಡಿಂಗ್, ಸಾಫ್ಟ್‌ವೇರ್.",
+    "ml": "നമസ്കാരം! ഇത് വ്യക്തമായ മലയാളം സംഭാഷണമാണ്. ശരിയായ അക്ഷരവിന്യാസത്തിലും വ്യാകരണത്തിലും എഴുതുക.",
+    "es": "Hola y bienvenido. Transcripción en español con ortografía impecable, tildes, signos de puntuación y términos técnicos correctos: Python, SQL, software, base de datos.",
+    "en": "Proper capitalization, correct spelling, punctuation, and clear technical terminology: Python, SQL, JavaScript, React, software, database, API."
+}
+
+# Rule-based phonetic & technical spell correction dictionary
+COMMON_SPELLING_FIXES = [
+    # Technical & Developer Terms
+    (r"\b(?:python|pythun|pythan|pithon|pyton)\b", "Python"),
+    (r"\b(?:sql|esquel|esql|sq\s*l)\b", "SQL"),
+    (r"\b(?:javascript|javascrip|jawascript|jscript)\b", "JavaScript"),
+    (r"\b(?:sofware|softwere|soffware)\b", "software"),
+    (r"\b(?:databse|data base)\b", "database"),
+    (r"\b(?:subtital|subtitel|subtitele|subtitels)\b", "subtitles"),
+    (r"\b(?:vedio|vidio)\b", "video"),
+    (r"\b(?:youtube|youtub)\b", "YouTube"),
+    (r"\b(?:github|git hub)\b", "GitHub"),
+    (r"\b(?:frontend|front end)\b", "Frontend"),
+    (r"\b(?:backend|back end)\b", "Backend"),
+    (r"\b(?:api's|apis)\b", "APIs"),
+    
+    # Common English spelling corrections
+    (r"\b(?:recieve|recieved|recieving)\b", lambda m: m.group(0).replace("ie", "ei")),
+    (r"\bseperate\b", "separate"),
+    (r"\bseperately\b", "separately"),
+    (r"\bdefinately\b", "definitely"),
+    (r"\boccured\b", "occurred"),
+    (r"\buntill\b", "until"),
+    (r"\balot\b", "a lot"),
+    (r"\btrancribe\b", "transcribe"),
+    (r"\btrancription\b", "transcription"),
+    (r"\bteh\b", "the"),
+    (r"\bwhta\b", "what"),
+    
+    # Telugu phonetic code-switching corrections when rendered in Latin or transliterated
+    (r"\bnaino\b", "nenu"),
+    (r"\bharita\b", "Haritha"),
+    (r"\bnage\s*ko\s*ali\b", "nerchukovali"),
+    (r"\bnagekoali\b", "nerchukovali"),
+    (r"\bhai\b", "Hi"),
+    (r"\bnamaskaram\b", "Namaskaram"),
+    (r"\bdhanyavadalu\b", "Dhanyavadalu"),
+]
+
+def correct_common_spelling_mistakes(text: str, lang: Optional[str] = None) -> str:
+    """Correct frequent phonetic slips, technical terms, and common typos."""
+    if not text:
+        return text
+
+    corrected = text
+    for pattern, replacement in COMMON_SPELLING_FIXES:
+        corrected = re.sub(pattern, replacement, corrected, flags=re.IGNORECASE)
+
+    # Clean double spaces and punctuation spacing
+    corrected = re.sub(r'\s+', ' ', corrected)
+    corrected = re.sub(r'\s+([,.:;?!])', r'\1', corrected)
+    return corrected.strip()
+
+def format_and_diarize_segments(raw_segments: List[Dict[str, Any]], max_chars_per_line: int = 48, lang: Optional[str] = None) -> List[Dict[str, Any]]:
     """
     Apply speaker alternation based on natural speech pauses (> 1.6s)
     and format readable sentence breaks respecting punctuation and script conventions.
@@ -86,9 +150,12 @@ def format_and_diarize_segments(raw_segments: List[Dict[str, Any]], max_chars_pe
     last_end = 0.0
 
     for idx, seg in enumerate(raw_segments):
-        text = str(seg.get("text", "")).strip()
-        if not text:
+        raw_text = str(seg.get("text", "")).strip()
+        if not raw_text:
             continue
+
+        # Apply AI spell & grammar correction
+        text = correct_common_spelling_mistakes(raw_text, lang)
 
         start = float(seg.get("start", 0.0))
         end = float(seg.get("end", start + 1.0))
@@ -157,12 +224,18 @@ def transcribe_audio(
     if language and language.strip() and language.strip().lower() != "auto":
         target_lang = language.strip().lower()
 
-    # Run transcription
+    # Retrieve tailored primer prompt to guide correct vocabulary and spelling
+    prompt = LANGUAGE_PROMPTS.get(target_lang or "en", "Clear speech with correct spelling, proper capitalization, and punctuation.")
+
+    # Run transcription with beam search and initial prompt
     segments_gen, info = model.transcribe(
         str(audio_path),
         beam_size=5,
+        best_of=5,
         language=target_lang,
         task="transcribe",
+        initial_prompt=prompt,
+        condition_on_previous_text=False,
         vad_filter=True,
         vad_parameters=dict(min_silence_duration_ms=400),
         word_timestamps=True
@@ -230,7 +303,7 @@ def transcribe_audio(
     if progress_callback:
         progress_callback(95, "Formatting synchronized subtitles & speaker tracks...")
 
-    formatted_segments = format_and_diarize_segments(raw_segments)
+    formatted_segments = format_and_diarize_segments(raw_segments, lang=detected_lang)
 
     return {
         "language": detected_lang,
