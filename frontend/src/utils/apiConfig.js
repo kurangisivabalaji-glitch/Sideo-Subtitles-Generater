@@ -13,12 +13,14 @@ const isLocal = isBrowser && (
 const customBackend = isBrowser ? (localStorage.getItem('subtitle_custom_backend') || '').trim() : '';
 
 export const API_BASE = customBackend || import.meta.env.VITE_API_URL 
-  || (isLocal ? 'http://127.0.0.1:8000' : '');
+  || (isBrowser && window.location.port === '8000' ? '' : (isLocal ? 'http://127.0.0.1:8000' : ''));
 
 export const WS_BASE = import.meta.env.VITE_WS_URL 
-  || (isLocal 
-      ? 'ws://127.0.0.1:8000' 
-      : (isBrowser && window.location.protocol === 'https:' ? `wss://${window.location.host}` : `ws://${isBrowser ? window.location.host : 'localhost'}`));
+  || (isBrowser && window.location.port === '8000'
+      ? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`
+      : (isLocal 
+          ? 'ws://127.0.0.1:8000' 
+          : (isBrowser && window.location.protocol === 'https:' ? `wss://${window.location.host}` : `ws://${isBrowser ? window.location.host : 'localhost'}`)));
 
 export const isNetlify = isBrowser && (
   window.location.hostname.includes('netlify.app') || 

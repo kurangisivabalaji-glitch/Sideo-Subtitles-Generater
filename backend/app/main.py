@@ -1,6 +1,9 @@
 import logging
+from pathlib import Path
+from typing import Optional
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from slowapi.errors import RateLimitExceeded
@@ -93,14 +96,63 @@ app.include_router(admin_router)
 app.include_router(ws_router)
 app.include_router(transcribe_router)  # Provides /api/languages, /api/models, legacy fallback
 
+# Locate frontend production distribution
+def get_frontend_dist_dir() -> Optional[Path]:
+    candidates = [
+        Path(__file__).resolve().parent.parent.parent / "frontend" / "dist",
+        Path(__file__).resolve().parent.parent / "dist",
+        Path(__file__).resolve().parent / "dist",
+        Path("frontend/dist"),
+        Path("/app/frontend/dist"),
+    ]
+    for p in candidates:
+        if p.exists() and (p / "index.html").exists():
+            return p
+    return None
+
+frontend_dist = get_frontend_dist_dir()
+
+# Mount frontend assets when built
+if frontend_dist and (frontend_dist / "assets").exists():
+    app.mount("/assets", StaticFiles(directory=str(frontend_dist / "assets")), name="frontend-assets")
+    logger.info(f"Unified Frontend static distribution mounted successfully from: {frontend_dist}")
+
 @app.get("/")
 async def root():
+    if frontend_dist and (frontend_dist / "index.html").exists():
+        return FileResponse(str(frontend_dist / "index.html"))
     return {
         "platform": "Universal AI Video Subtitle Generator Cloud Platform",
         "version": "2.0.0",
         "status": "online",
         "docs": "/docs"
     }
+
+# SPA Fallback for client-side routing (e.g. /dashboard, /studio, /settings)
+@app.get("/{full_path:path}")
+async def serve_spa_frontend(full_path: str):
+    # Do not intercept API, Media, Docs, or OpenAPI routes
+    if (
+        full_path.startswith("api")
+        or full_path.startswith("media")
+        or full_path.startswith("docs")
+        or full_path.startswith("redoc")
+        or full_path == "openapi.json"
+    ):
+        raise HTTPException(status_code=404, detail="Endpoint not found")
+
+    if frontend_dist:
+        # Check if direct static file exists in dist (e.g., favicon.svg, icons.svg, manifest.json)
+        target_file = frontend_dist / full_path
+        if target_file.is_file():
+            return FileResponse(str(target_file))
+        
+        # Fallback to SPA index.html
+        index_file = frontend_dist / "index.html"
+        if index_file.is_file():
+            return FileResponse(str(index_file))
+
+    raise HTTPException(status_code=404, detail="Frontend build index.html not found")
 
 if __name__ == "__main__":
     import uvicorn

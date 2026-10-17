@@ -18,10 +18,11 @@ start "Frontend - Vite React" cmd /k "cd /d "%~dp0frontend" && npm run dev"
 echo.
 echo =======================================================
 echo    Application is launching!
-echo    Frontend: http://localhost:5173
-echo    Backend API: http://127.0.0.1:8000/docs
+echo    Unified Full-Stack App: http://127.0.0.1:8000
+echo    Vite React Dev Server:  http://localhost:5173
+echo    Backend Swagger Docs:   http://127.0.0.1:8000/docs
 echo =======================================================
 echo.
 timeout /t 3 >nul
-start http://localhost:5173
+start http://127.0.0.1:8000
 pause

@@ -22,7 +22,10 @@ Write-Host "[2/2] Starting Frontend (Vite React) on http://localhost:5173..." -F
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location '$baseDir\frontend'; `$env:Path = '$nodeDir;$ffmpegDir;$pyDir;$pyDir\Scripts;' + `$env:Path; npm run dev"
 
 Start-Sleep -Seconds 3
-Start-Process "http://localhost:5173"
+Start-Process "http://127.0.0.1:8000"
 
 Write-Host ""
-Write-Host "Studio running! Open http://localhost:5173 in your browser." -ForegroundColor Cyan
+Write-Host "Studio running!" -ForegroundColor Cyan
+Write-Host "Unified App:  http://127.0.0.1:8000" -ForegroundColor Green
+Write-Host "Vite Dev:     http://localhost:5173" -ForegroundColor Green
+Write-Host "API Docs:     http://127.0.0.1:8000/docs" -ForegroundColor Green
