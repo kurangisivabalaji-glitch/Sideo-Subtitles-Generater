@@ -10,7 +10,9 @@ const isLocal = isBrowser && (
   window.location.hostname.startsWith('10.')
 );
 
-export const API_BASE = import.meta.env.VITE_API_URL 
+const customBackend = isBrowser ? (localStorage.getItem('subtitle_custom_backend') || '').trim() : '';
+
+export const API_BASE = customBackend || import.meta.env.VITE_API_URL 
   || (isLocal ? 'http://127.0.0.1:8000' : '');
 
 export const WS_BASE = import.meta.env.VITE_WS_URL 

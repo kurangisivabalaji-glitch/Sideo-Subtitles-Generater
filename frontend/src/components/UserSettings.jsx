@@ -219,6 +219,56 @@ export function UserSettings() {
           </form>
         </div>
 
+        {/* AI Speech Engine & Cloud Services Configuration */}
+        <div className="bg-[#0E131F]/90 border border-slate-800 rounded-2xl p-6 shadow-xl">
+          <h2 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-cyan-400" />
+            <span>AI Speech Recognition &amp; Cloud Services</span>
+          </h2>
+          <p className="text-xs text-slate-400 mb-4">
+            Configure in-browser OpenAI Whisper (WebGPU / WASM) or add optional cloud acceleration keys.
+          </p>
+
+          <div className="space-y-4 max-w-lg text-xs">
+            <div>
+              <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                Groq Whisper API Key <span className="text-slate-500">(Optional for 1-second cloud transcription)</span>
+              </label>
+              <input
+                type="password"
+                placeholder="gsk_..."
+                defaultValue={localStorage.getItem('subtitle_groq_key') || ''}
+                onChange={(e) => {
+                  const val = e.target.value.trim();
+                  if (val) localStorage.setItem('subtitle_groq_key', val);
+                  else localStorage.removeItem('subtitle_groq_key');
+                }}
+                className="w-full px-3.5 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 font-mono"
+              />
+              <span className="text-[11px] text-slate-500 block mt-1">
+                Free high-speed speech inference at 300x realtime speed. When empty, in-browser OpenAI Whisper (WebGPU/WASM) runs automatically.
+              </span>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                Custom Backend API Server URL <span className="text-slate-500">(Optional)</span>
+              </label>
+              <input
+                type="text"
+                placeholder="https://your-api.onrender.com or http://localhost:8000"
+                defaultValue={localStorage.getItem('subtitle_custom_backend') || ''}
+                onChange={(e) => {
+                  const val = e.target.value.trim();
+                  if (val) localStorage.setItem('subtitle_custom_backend', val);
+                  else localStorage.removeItem('subtitle_custom_backend');
+                }}
+                className="w-full px-3.5 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 font-mono"
+              />
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   );

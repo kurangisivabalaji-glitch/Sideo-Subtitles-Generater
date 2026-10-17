@@ -1,7 +1,8 @@
 import React from 'react';
 import { Sparkles, Globe, Film, RefreshCw, Layers } from 'lucide-react';
+import { SUPPORTED_LANGUAGES } from '../utils/languages';
 
-export function Header({ hasVideo, onReset, activeTrack, detectedLanguage, confidence }) {
+export function Header({ hasVideo, onReset, activeTrack, detectedLanguage, confidence, onOverrideLanguage }) {
   return (
     <header style={{
       display: 'flex',
@@ -76,10 +77,10 @@ export function Header({ hasVideo, onReset, activeTrack, detectedLanguage, confi
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            padding: '6px 14px',
+            padding: '4px 12px',
             borderRadius: 'var(--radius-full)',
-            background: 'rgba(6, 182, 212, 0.15)',
-            border: '1px solid rgba(6, 182, 212, 0.4)',
+            background: 'rgba(6, 182, 212, 0.12)',
+            border: '1px solid rgba(6, 182, 212, 0.45)',
             fontSize: '0.82rem',
             boxShadow: '0 0 15px rgba(6, 182, 212, 0.2)'
           }}>
@@ -88,10 +89,40 @@ export function Header({ hasVideo, onReset, activeTrack, detectedLanguage, confi
               Spoken: {detectedLanguage}
             </span>
             {confidence && (
-              <span style={{ color: '#cbd5e1', fontSize: '0.75rem', fontWeight: 600 }}>
-                ({Math.round(confidence * 100)}% match)
+              <span style={{ color: '#a5f3fc', fontSize: '0.74rem', fontWeight: 600 }}>
+                • {Math.round(confidence * 100)}% match
               </span>
             )}
+            
+            {/* Language Override Selector */}
+            <select
+              onChange={(e) => {
+                const code = e.target.value;
+                const found = SUPPORTED_LANGUAGES.find(l => l.code === code);
+                if (found && onOverrideLanguage) {
+                  onOverrideLanguage(code, found.name + (found.native !== found.name ? ` (${found.native})` : ''));
+                }
+              }}
+              defaultValue=""
+              style={{
+                background: 'rgba(15, 23, 42, 0.85)',
+                color: '#cbd5e1',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                borderRadius: '6px',
+                fontSize: '0.72rem',
+                padding: '2px 6px',
+                marginLeft: '4px',
+                cursor: 'pointer'
+              }}
+              title="Override detected spoken language tag without translating speech"
+            >
+              <option value="" disabled>Change Tag...</option>
+              {SUPPORTED_LANGUAGES.filter(l => l.code !== 'auto').map(l => (
+                <option key={l.code} value={l.code} style={{ background: '#0e1422', color: '#fff' }}>
+                  {l.flag ? `${l.flag} ` : ''}{l.name} ({l.native})
+                </option>
+              ))}
+            </select>
           </div>
         )}
 

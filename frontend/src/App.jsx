@@ -33,7 +33,8 @@ import { StylingPanel } from './components/StylingPanel';
 import { ExportModal } from './components/ExportModal';
 import { ProgressModal } from './components/ProgressModal';
 import { LiveVoiceAutoTracker } from './components/LiveVoiceAutoTracker';
-import { isLanguageRtl } from './utils/languages';
+import { extractAudioFromVideo, transcribeWithBrowserWhisper, transcribeWithGroqCloud } from './utils/browserWhisper';
+import { isLanguageRtl, getLanguageName } from './utils/languages';
 import { formatPreciseTime } from './utils/timeUtils';
 import { API_BASE, WS_BASE } from './utils/apiConfig';
 
@@ -289,99 +290,72 @@ function AppContent() {
     return segments;
   };
 
-  // Cloud demo simulation helper for Netlify or offline backend
-  const runCloudDemoSimulation = (file, previewUrl, selectedLang = 'auto', targetLang = null) => {
+  // Extract actual audio from uploaded video and run real multilingual Whisper speech recognition
+  const runClientSideAudioTranscription = async (file, previewUrl, selectedLang = 'auto', targetLang = null) => {
+    setIsProcessing(true);
     setProgressError(null);
-    setProgressPct(20);
-    setProgressStep('Analyzing audio waveform and speech cadence...');
+    setProgressPct(10);
+    setProgressStep('Extracting audio track directly from uploaded video...');
 
-    // Probe duration from preview video
-    let detectedDuration = 180;
     try {
-      const probeVid = document.createElement('video');
-      probeVid.preload = 'metadata';
-      probeVid.src = previewUrl;
-      probeVid.onloadedmetadata = () => {
-        if (probeVid.duration && !isNaN(probeVid.duration) && probeVid.duration > 3) {
-          detectedDuration = probeVid.duration;
-        }
-      };
-    } catch (e) {}
+      // 1. Extract real audio waveform from the video file using HTML5 AudioContext
+      const { audioData, duration } = await extractAudioFromVideo(file, (pct, msg) => {
+        setProgressPct(pct);
+        setProgressStep(msg);
+      });
 
-    setTimeout(() => {
-      setProgressPct(60);
-      setProgressStep('Generating high-precision subtitle timings (OpenAI Whisper)...');
-      setTimeout(() => {
-        setProgressPct(100);
-        setProgressStep('Finalizing subtitle tracks and studio layout...');
-        setTimeout(() => {
-          setIsProcessing(false);
-          setProgressError(null);
-          setVideoFilename(file?.name || 'sample_video.mp4');
-          setVideoSrc(previewUrl);
+      // 2. Check if user configured an optional Groq Cloud Whisper API key in localStorage
+      const userGroqKey = localStorage.getItem('subtitle_groq_key');
+      let result;
 
-          const fileNameLower = (file?.name || '').toLowerCase();
-          const isTelugu = selectedLang === 'te' || fileNameLower.includes('telugu');
-          const isHindi = selectedLang === 'hi' || fileNameLower.includes('hindi');
-          const isSpanish = selectedLang === 'es' || fileNameLower.includes('spanish');
+      if (userGroqKey && userGroqKey.trim()) {
+        setProgressStep('Transcribing speech via Ultra-Fast Cloud Whisper (Groq)...');
+        result = await transcribeWithGroqCloud(file, userGroqKey.trim(), selectedLang);
+      } else {
+        // 3. Run in-browser multilingual OpenAI Whisper via Transformers.js (WebGPU / WASM)
+        setProgressStep('Running OpenAI Whisper speech recognition on actual video audio...');
+        result = await transcribeWithBrowserWhisper(audioData, {
+          language: selectedLang,
+          model: 'Xenova/whisper-tiny'
+        }, (pct, msg) => {
+          setProgressPct(pct);
+          setProgressStep(msg);
+        });
+      }
 
-          let primaryLang = 'en';
-          if (isTelugu) primaryLang = 'te';
-          else if (isHindi) primaryLang = 'hi';
-          else if (isSpanish) primaryLang = 'es';
+      const segments = result.segments || [];
+      if (segments.length === 0) {
+        throw new Error('No spoken dialogue was detected in the video audio track. Please upload a video with clear spoken speech.');
+      }
 
-          const demoSegments = createContinuousSubtitleTrack(detectedDuration, primaryLang);
+      setIsProcessing(false);
+      setProgressError(null);
+      setVideoFilename(file.name);
+      setVideoSrc(previewUrl);
+      setOriginalSegments(segments);
+      setDetectedLanguage(result.detectedLanguage);
+      setDetectedLanguageConfidence(result.languageConfidence || 0.98);
 
-          setOriginalSegments(demoSegments);
-          setDetectedLanguage(
-            isTelugu ? 'Telugu (తెలుగు)' :
-            (isHindi ? 'Hindi (हिन्दी)' :
-            (isSpanish ? 'Spanish (Español)' : 'English (Auto-detected)'))
-          );
-          setDetectedLanguageConfidence(0.99);
+      const isRtl = isLanguageRtl(result.detectedLanguageCode);
+      setStyleOptions(prev => ({ ...prev, isRtl }));
 
-          // Handle target translation track if chosen
-          if (targetLang && targetLang !== 'none') {
-            const langNames = {
-              es: 'Spanish', fr: 'French', de: 'German', hi: 'Hindi', ja: 'Japanese',
-              zh: 'Chinese', it: 'Italian', pt: 'Portuguese', ar: 'Arabic', ru: 'Russian',
-              te: 'Telugu', ta: 'Tamil', en: 'English'
-            };
-            const tName = langNames[targetLang] || targetLang.toUpperCase();
-            const isRtl = targetLang === 'ar' || targetLang === 'he' || targetLang === 'fa';
-            
-            // Generate full-duration translated track
-            const translatedDemo = createContinuousSubtitleTrack(detectedDuration, targetLang).map((s, i) => ({
-              ...s,
-              text: targetLang === 'en' 
-                ? (englishPhrases[i % englishPhrases.length] || s.text)
-                : `[${tName}] ${s.text}`
-            }));
+      if (targetLang && targetLang !== 'none') {
+        handlePerformTranslation(targetLang);
+      } else {
+        setActiveTrack('original');
+      }
 
-            setTranslations({
-              [targetLang]: {
-                code: targetLang,
-                name: tName,
-                segments: translatedDemo,
-                isRtl
-              }
-            });
-            setTranslatedSegments(translatedDemo);
-            setTranslatedLanguage(tName);
-            setActiveTrack(targetLang);
-            if (isRtl) setStyleOptions(prev => ({ ...prev, isRtl: true }));
-          } else {
-            setActiveTrack('original');
-          }
+      setHistory([segments]);
+      setHistoryIndex(0);
+      setHasVideo(true);
+      setActiveTab('dialogue');
+      setActiveView('studio');
 
-          setHistory([demoSegments]);
-          setHistoryIndex(0);
-          setHasVideo(true);
-          setActiveTab('dialogue');
-          setActiveView('studio');
-        }, 350);
-      }, 650);
-    }, 550);
+    } catch (err) {
+      console.error('Audio extraction / speech recognition error:', err);
+      setIsProcessing(false);
+      setProgressError(err.message || 'Failed to process audio from video. Please ensure the video has an audible voice track.');
+    }
   };
 
   // Start transcription (supports authenticated Multi-User Cloud Queue, Guest mode & Netlify Cloud Demo)
@@ -436,7 +410,7 @@ function AppContent() {
                   finishJob(jobId, localPreviewUrl);
                 } else if (data.status === 'FAILED') {
                   ws.close();
-                  runCloudDemoSimulation(file, localPreviewUrl, language, targetLanguage);
+                  runClientSideAudioTranscription(file, localPreviewUrl, language, targetLanguage);
                 }
               } catch (err) {}
             };
@@ -461,7 +435,7 @@ function AppContent() {
                 finishJob(jobId, localPreviewUrl);
               } else if (updatedJob.status === 'FAILED' || updatedJob.status === 'CANCELLED') {
                 clearInterval(interval);
-                runCloudDemoSimulation(file, localPreviewUrl, language, targetLanguage);
+                runClientSideAudioTranscription(file, localPreviewUrl, language, targetLanguage);
               }
             } catch (pollErr) {
               console.error('Job polling error:', pollErr);
@@ -523,7 +497,7 @@ function AppContent() {
                   }
                 } else if (job.status === 'failed') {
                   clearInterval(interval);
-                  runCloudDemoSimulation(file, localPreviewUrl, language, targetLanguage);
+                  runClientSideAudioTranscription(file, localPreviewUrl, language, targetLanguage);
                 }
               } catch (pollErr) {
                 console.error('Job polling error:', pollErr);
@@ -537,11 +511,11 @@ function AppContent() {
       }
 
       // 3. Fallback when static deployment has no active backend server
-      runCloudDemoSimulation(file, localPreviewUrl, language, targetLanguage);
+      runClientSideAudioTranscription(file, localPreviewUrl, language, targetLanguage);
 
     } catch (err) {
       console.warn('Backend service recovery:', err);
-      runCloudDemoSimulation(file, localPreviewUrl, language, targetLanguage);
+      runClientSideAudioTranscription(file, localPreviewUrl, language, targetLanguage);
     }
   };
 
@@ -846,6 +820,13 @@ function AppContent() {
     setCurrentTime(0);
   };
 
+  // Override detected language tag without translating/altering original speech text
+  const handleOverrideLanguage = (langCode, langName) => {
+    setDetectedLanguage(langName);
+    const isRtl = isLanguageRtl(langCode);
+    setStyleOptions(prev => ({ ...prev, isRtl }));
+  };
+
   const currentDisplaySegments = (() => {
     if (activeTrack === 'original') return originalSegments;
     if (translations[activeTrack]?.segments) return translations[activeTrack].segments;
@@ -922,6 +903,7 @@ function AppContent() {
             activeTrack={activeTrack}
             detectedLanguage={detectedLanguage}
             confidence={detectedLanguageConfidence}
+            onOverrideLanguage={handleOverrideLanguage}
           />
 
           <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
