@@ -280,7 +280,8 @@ function AppContent() {
         id: idx + 1,
         start: parseFloat(cur.toFixed(2)),
         end: end,
-        text: text
+        text: text,
+        speaker: `Speaker ${idx % 2 === 0 ? 1 : 2}`
       });
 
       cur = parseFloat((end + 0.15).toFixed(2));
@@ -1197,6 +1198,14 @@ function AppContent() {
                             }
                             return s;
                           });
+                          updateSegmentsWithHistory(updated);
+                        }}
+                        onAddSegment={(newSeg) => {
+                          const updated = [...currentDisplaySegments, newSeg].sort((a, b) => a.start - b.start);
+                          updateSegmentsWithHistory(updated);
+                        }}
+                        onDeleteSegment={(id) => {
+                          const updated = currentDisplaySegments.filter(s => s.id !== id);
                           updateSegmentsWithHistory(updated);
                         }}
                         isRtl={styleOptions.isRtl}

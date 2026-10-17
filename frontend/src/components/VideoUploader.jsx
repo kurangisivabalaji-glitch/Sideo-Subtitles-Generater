@@ -11,7 +11,9 @@ import {
   Play,
   Languages,
   Zap,
-  Key
+  Key,
+  Mic,
+  Radio
 } from 'lucide-react';
 import { SUPPORTED_LANGUAGES } from '../utils/languages';
 
@@ -139,6 +141,122 @@ export function VideoUploader({ onStartTranscription, onUseSampleVideo, onStartL
         <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', maxWidth: '680px', margin: '0 auto' }}>
           Upload any video in Telugu, English, Hindi, Tamil, Kannada, Malayalam, Arabic, Spanish, French, or 90+ other languages. Whisper AI transcribes real speech with precise timestamps.
         </p>
+      </div>
+
+      {/* Live Dialogue Tracking & Quick Action Banner */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))',
+        gap: '16px',
+        marginBottom: '24px'
+      }}>
+        {/* Card 1: Live Voice Dialogue Auto-Tracker */}
+        <div 
+          onClick={() => onStartLiveVoiceSession && onStartLiveVoiceSession(selectedLanguage)}
+          style={{
+            background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(6, 182, 212, 0.08))',
+            border: '1px solid rgba(16, 185, 129, 0.35)',
+            borderRadius: 'var(--radius-lg)',
+            padding: '20px 22px',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '16px'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = '#10b981';
+            e.currentTarget.style.transform = 'translateY(-2px)';
+            e.currentTarget.style.boxShadow = '0 8px 24px rgba(16, 185, 129, 0.2)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = 'rgba(16, 185, 129, 0.35)';
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = 'none';
+          }}
+        >
+          <div style={{
+            width: '44px',
+            height: '44px',
+            borderRadius: '12px',
+            background: 'linear-gradient(135deg, #10b981, #059669)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#ffffff',
+            flexShrink: 0,
+            boxShadow: '0 4px 12px rgba(16, 185, 129, 0.4)'
+          }}>
+            <Mic size={22} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+              <span style={{ fontSize: '0.98rem', fontWeight: 800, color: '#f0fdf4' }}>
+                Live Dialogue Speech Tracker
+              </span>
+              <span className="badge badge-emerald" style={{ fontSize: '0.68rem', padding: '2px 6px' }}>
+                <Radio size={10} className="pulse-slow" /> Real-Time
+              </span>
+            </div>
+            <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
+              Speak live into your microphone in Telugu, English, Hindi, or any language with instant auto-tracking subtitles & speaker cues.
+            </p>
+          </div>
+        </div>
+
+        {/* Card 2: Interactive Subtitle Studio with Demo Video */}
+        <div 
+          onClick={onUseSampleVideo}
+          style={{
+            background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.12), rgba(99, 102, 241, 0.08))',
+            border: '1px solid rgba(6, 182, 212, 0.35)',
+            borderRadius: 'var(--radius-lg)',
+            padding: '20px 22px',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '16px'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = '#06b6d4';
+            e.currentTarget.style.transform = 'translateY(-2px)';
+            e.currentTarget.style.boxShadow = '0 8px 24px rgba(6, 182, 212, 0.2)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.35)';
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = 'none';
+          }}
+        >
+          <div style={{
+            width: '44px',
+            height: '44px',
+            borderRadius: '12px',
+            background: 'linear-gradient(135deg, #06b6d4, #3b82f6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#ffffff',
+            flexShrink: 0,
+            boxShadow: '0 4px 12px rgba(6, 182, 212, 0.4)'
+          }}>
+            <Play size={20} fill="#ffffff" />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+              <span style={{ fontSize: '0.98rem', fontWeight: 800, color: '#ecfeff' }}>
+                Try Sample Video &amp; Subtitles
+              </span>
+              <span className="badge badge-cyan" style={{ fontSize: '0.68rem', padding: '2px 6px' }}>
+                Instant Preview
+              </span>
+            </div>
+            <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
+              Experience synchronized subtitles, live dialogue follow-mode, speaker labels, and instant multilingual translation.
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Main card */}

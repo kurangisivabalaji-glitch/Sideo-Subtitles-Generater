@@ -20,7 +20,9 @@ import {
   CheckCircle2,
   Filter,
   Zap,
-  Users
+  Users,
+  Plus,
+  Trash2
 } from 'lucide-react';
 import { formatDisplayTime, formatPreciseTime } from '../utils/timeUtils';
 import { getLanguageDetails } from '../utils/languages';
@@ -30,6 +32,8 @@ export function DialogueTracker({
   currentTime = 0,
   onSeek,
   onUpdateText,
+  onAddSegment,
+  onDeleteSegment,
   onRenameSpeaker,
   isRtl = false,
   languageName = 'Spoken Language',
@@ -165,6 +169,35 @@ export function DialogueTracker({
     }
     setRenamingSpeaker(null);
     setNewSpeakerName('');
+  };
+
+  // Add new dialogue subtitle at current playhead time
+  const handleAddDialogueAtPlayhead = () => {
+    if (!onAddSegment) return;
+    const newId = (segments.length > 0 ? Math.max(...segments.map(s => Number(s.id) || 0)) : 0) + 1;
+    const start = parseFloat(Number(currentTime).toFixed(2));
+    const end = parseFloat(Number(currentTime + 2.5).toFixed(2));
+    const speaker = segments.length % 2 === 0 ? 'Speaker 1' : 'Speaker 2';
+
+    const newSeg = {
+      id: newId,
+      start,
+      end,
+      text: 'New spoken dialogue line...',
+      speaker
+    };
+
+    onAddSegment(newSeg);
+    setEditingId(newId);
+    setEditText('New spoken dialogue line...');
+  };
+
+  // Delete dialogue segment
+  const handleDeleteSegment = (segId, e) => {
+    if (e) e.stopPropagation();
+    if (onDeleteSegment) {
+      onDeleteSegment(segId);
+    }
   };
 
   return (
@@ -405,6 +438,19 @@ export function DialogueTracker({
 
           {/* Action buttons */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            {/* Add Dialogue Line */}
+            {onAddSegment && (
+              <button
+                onClick={handleAddDialogueAtPlayhead}
+                className="btn btn-emerald"
+                style={{ fontSize: '0.76rem', padding: '6px 12px', gap: '5px', fontWeight: 700 }}
+                title="Add a new dialogue line at current playhead position"
+              >
+                <Plus size={13} strokeWidth={2.5} />
+                <span>Add Dialogue</span>
+              </button>
+            )}
+
             {/* Copy Script */}
             <button
               onClick={handleCopyScript}
@@ -621,7 +667,7 @@ export function DialogueTracker({
                       </span>
                     </div>
 
-                    {/* Action buttons (Seek, Replay, Edit) */}
+                    {/* Action buttons (Seek, Replay, Edit, Delete) */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <button
                         onClick={() => handleStartEdit(seg)}
@@ -641,6 +687,27 @@ export function DialogueTracker({
                       >
                         <Edit2 size={11} />
                       </button>
+
+                      {onDeleteSegment && (
+                        <button
+                          onClick={(e) => handleDeleteSegment(seg.id, e)}
+                          style={{
+                            background: 'rgba(239, 68, 68, 0.08)',
+                            border: '1px solid rgba(239, 68, 68, 0.2)',
+                            borderRadius: '6px',
+                            color: '#f87171',
+                            width: '26px',
+                            height: '26px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer'
+                          }}
+                          title="Delete dialogue subtitle"
+                        >
+                          <Trash2 size={11} />
+                        </button>
+                      )}
 
                       <button
                         onClick={() => onSeek(seg.start, true)}
