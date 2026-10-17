@@ -498,9 +498,10 @@ function AppContent() {
       }
 
       // 2. Direct Whisper Speech Recognition backend (/api/transcribe) for guest / session users
-      if (API_BASE) {
+      if (API_BASE !== null && API_BASE !== undefined) {
         try {
-          const response = await fetch(`${API_BASE}/api/transcribe`, {
+          const transcribeEndpoint = API_BASE ? `${API_BASE}/api/transcribe` : '/api/transcribe';
+          const response = await fetch(transcribeEndpoint, {
             method: 'POST',
             body: formData
           });
@@ -511,19 +512,21 @@ function AppContent() {
             const jobId = data.job_id;
             setCurrentJobId(jobId);
             setVideoFilename(data.video_filename || file.name);
-            setVideoSrc(localPreviewUrl || `${API_BASE}${data.video_url}`);
+            setVideoSrc(localPreviewUrl || (API_BASE ? `${API_BASE}${data.video_url}` : data.video_url));
 
             // Poll transcribe job
             const interval = setInterval(async () => {
               try {
-                let jobRes = await fetch(`${API_BASE}/api/transcribe/status/${jobId}`);
+                const statusUrl = API_BASE ? `${API_BASE}/api/transcribe/status/${jobId}` : `/api/transcribe/status/${jobId}`;
+                let jobRes = await fetch(statusUrl);
                 if (!jobRes.ok) {
-                  jobRes = await fetch(`${API_BASE}/api/jobs/${jobId}`);
+                  const altUrl = API_BASE ? `${API_BASE}/api/jobs/${jobId}` : `/api/jobs/${jobId}`;
+                  jobRes = await fetch(altUrl);
                 }
                 if (!jobRes.ok) return;
                 const job = await jobRes.json();
 
-                if (job.status === 'processing') {
+                if (job.status === 'processing' || job.status === 'pending') {
                   setProgressPct(job.progress || 20);
                   setProgressStep(job.step || 'Transcribing speech with Whisper AI...');
                 } else if (job.status === 'completed') {
