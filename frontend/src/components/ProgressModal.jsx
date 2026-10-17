@@ -1,7 +1,7 @@
 import React from 'react';
-import { Loader2, Sparkles, AlertCircle, X } from 'lucide-react';
+import { Loader2, Sparkles, AlertCircle, X, Zap } from 'lucide-react';
 
-export function ProgressModal({ isOpen, step, progress, error, onCancel }) {
+export function ProgressModal({ isOpen, step, progress, error, onCancel, onFastTrack }) {
   if (!isOpen) return null;
 
   return (
@@ -24,6 +24,31 @@ export function ProgressModal({ isOpen, step, progress, error, onCancel }) {
         position: 'relative',
         boxShadow: '0 20px 50px rgba(0, 0, 0, 0.8)'
       }}>
+        {/* Close X button */}
+        {onCancel && (
+          <button
+            onClick={onCancel}
+            type="button"
+            aria-label="Close"
+            style={{
+              position: 'absolute',
+              top: '16px',
+              right: '16px',
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--text-muted)',
+              cursor: 'pointer',
+              padding: '6px',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            <X size={20} />
+          </button>
+        )}
+
         {error ? (
           <div>
             <div style={{
@@ -101,15 +126,47 @@ export function ProgressModal({ isOpen, step, progress, error, onCancel }) {
               justifyContent: 'space-between',
               fontSize: '0.82rem',
               color: 'var(--text-muted)',
-              marginBottom: '20px'
+              marginBottom: '18px'
             }}>
               <span>Speech Recognition in Progress</span>
               <span style={{ fontWeight: 600, color: '#a5b4fc' }}>{progress}%</span>
             </div>
 
-            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: onFastTrack ? '16px' : '0' }}>
               Whisper automatically recognizes speech phonetics, punctuation, and native scripts.
             </p>
+
+            {/* Instant Fast Track Button */}
+            {onFastTrack && (
+              <div style={{
+                marginTop: '16px',
+                paddingTop: '16px',
+                borderTop: '1px solid rgba(255, 255, 255, 0.08)'
+              }}>
+                <button
+                  onClick={onFastTrack}
+                  type="button"
+                  className="btn btn-soft-cyan"
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    padding: '10px 16px',
+                    fontSize: '0.86rem',
+                    fontWeight: 700,
+                    borderRadius: 'var(--radius-md)'
+                  }}
+                >
+                  <Zap size={16} color="#06b6d4" />
+                  Fast-Track to Studio (Instant)
+                </button>
+                <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '6px' }}>
+                  Skip waiting and enter the subtitle studio right away with acoustic cadence.
+                </p>
+              </div>
+            )}
           </div>
         )}
       </div>

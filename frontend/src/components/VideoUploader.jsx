@@ -9,7 +9,9 @@ import {
   AlertCircle, 
   CheckCircle2,
   Play,
-  Languages
+  Languages,
+  Zap,
+  Key
 } from 'lucide-react';
 import { SUPPORTED_LANGUAGES } from '../utils/languages';
 
@@ -22,6 +24,13 @@ export function VideoUploader({ onStartTranscription, onUseSampleVideo, onStartL
   const [selectedLanguage, setSelectedLanguage] = useState('auto');
   const [targetLanguage, setTargetLanguage] = useState('none');
   const [errorMsg, setErrorMsg] = useState(null);
+  const [showCloudKey, setShowCloudKey] = useState(false);
+  const [groqKey, setGroqKey] = useState(() => localStorage.getItem('subtitle_groq_key') || '');
+
+  const handleGroqKeyChange = (val) => {
+    setGroqKey(val);
+    localStorage.setItem('subtitle_groq_key', val.trim());
+  };
 
   const fileInputRef = useRef(null);
 
@@ -416,6 +425,66 @@ export function VideoUploader({ onStartTranscription, onUseSampleVideo, onStartL
               Automatically convert subtitles to any language while retaining original timings.
             </p>
           </div>
+        </div>
+
+        {/* Ultra-Fast Cloud Mode Toggle (0.8s Whisper Large-v3) */}
+        <div style={{
+          marginTop: '20px',
+          padding: '14px 18px',
+          background: 'rgba(99, 102, 241, 0.08)',
+          border: '1px solid rgba(99, 102, 241, 0.25)',
+          borderRadius: 'var(--radius-md)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+              <Zap size={18} color="#67e8f9" />
+              <div>
+                <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#e0e7ff' }}>
+                  Ultra-Fast Cloud Whisper (0.8s)
+                </span>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginLeft: '8px' }}>
+                  {groqKey ? '⚡ Active (instant ~1s transcription)' : 'Optional free key for instant transcription'}
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowCloudKey(!showCloudKey)}
+              className="btn btn-soft-cyan"
+              style={{ fontSize: '0.76rem', padding: '4px 12px', borderRadius: 'var(--radius-full)' }}
+            >
+              {showCloudKey ? 'Hide Key' : (groqKey ? 'Edit Key' : '+ Set Free Groq API Key')}
+            </button>
+          </div>
+
+          {showCloudKey && (
+            <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <Key size={16} color="#a5b4fc" />
+                <input
+                  type="password"
+                  className="input-field"
+                  placeholder="Paste free Groq API key (e.g. gsk_...)"
+                  value={groqKey}
+                  onChange={(e) => handleGroqKeyChange(e.target.value)}
+                  style={{ flex: 1, fontSize: '0.84rem', padding: '8px 12px' }}
+                />
+                {groqKey && (
+                  <button
+                    type="button"
+                    onClick={() => handleGroqKeyChange('')}
+                    className="btn btn-soft-rose"
+                    style={{ fontSize: '0.76rem', padding: '8px 12px' }}
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              <p style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '6px' }}>
+                Get a 100% free key from <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer" style={{ color: '#67e8f9', textDecoration: 'underline' }}>console.groq.com</a>. Runs Whisper Large v3 in ~0.8s on serverless/Netlify!
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Action Buttons with High-Contrast Colors */}

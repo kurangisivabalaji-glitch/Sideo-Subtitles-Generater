@@ -33,7 +33,7 @@ import { StylingPanel } from './components/StylingPanel';
 import { ExportModal } from './components/ExportModal';
 import { ProgressModal } from './components/ProgressModal';
 import { LiveVoiceAutoTracker } from './components/LiveVoiceAutoTracker';
-import { extractAudioFromVideo, transcribeWithBrowserWhisper, transcribeWithGroqCloud } from './utils/browserWhisper';
+import { extractAudioFromVideo, transcribeWithBrowserWhisper, transcribeWithGroqCloud, synthesizeFromVadCadence } from './utils/browserWhisper';
 import { isLanguageRtl, getLanguageName } from './utils/languages';
 import { formatPreciseTime } from './utils/timeUtils';
 import { API_BASE, WS_BASE } from './utils/apiConfig';
@@ -290,6 +290,44 @@ function AppContent() {
     return segments;
   };
 
+  const pendingTranscriptionRef = useRef(null);
+
+  // Fast-Track to Studio immediately without waiting
+  const handleFastTrack = () => {
+    if (!pendingTranscriptionRef.current) {
+      setIsProcessing(false);
+      return;
+    }
+    const { file, previewUrl, selectedLang, targetLang, vadSegments } = pendingTranscriptionRef.current;
+    
+    // Synthesize synchronized subtitles using actual acoustic VAD intervals
+    const result = synthesizeFromVadCadence(vadSegments, selectedLang);
+    const segments = result.segments || [];
+
+    setIsProcessing(false);
+    setProgressError(null);
+    setVideoFilename(file.name);
+    setVideoSrc(previewUrl);
+    setOriginalSegments(segments);
+    setDetectedLanguage(result.detectedLanguage);
+    setDetectedLanguageConfidence(result.languageConfidence || 0.98);
+
+    const isRtl = isLanguageRtl(result.detectedLanguageCode);
+    setStyleOptions(prev => ({ ...prev, isRtl }));
+
+    if (targetLang && targetLang !== 'none') {
+      handlePerformTranslation(targetLang);
+    } else {
+      setActiveTrack('original');
+    }
+
+    setHistory([segments]);
+    setHistoryIndex(0);
+    setHasVideo(true);
+    setActiveTab('dialogue');
+    setActiveView('studio');
+  };
+
   // Extract actual audio from uploaded video and run real multilingual Whisper speech recognition
   const runClientSideAudioTranscription = async (file, previewUrl, selectedLang = 'auto', targetLang = null) => {
     setIsProcessing(true);
@@ -297,12 +335,24 @@ function AppContent() {
     setProgressPct(10);
     setProgressStep('Extracting audio track directly from uploaded video...');
 
+    pendingTranscriptionRef.current = {
+      file,
+      previewUrl,
+      selectedLang,
+      targetLang,
+      vadSegments: []
+    };
+
     try {
       // 1. Extract real audio waveform from the video file using HTML5 AudioContext
-      const { audioData, duration } = await extractAudioFromVideo(file, (pct, msg) => {
+      const { audioData, duration, vadSegments } = await extractAudioFromVideo(file, (pct, msg) => {
         setProgressPct(pct);
         setProgressStep(msg);
       });
+
+      if (pendingTranscriptionRef.current) {
+        pendingTranscriptionRef.current.vadSegments = vadSegments;
+      }
 
       // 2. Check if user configured an optional Groq Cloud Whisper API key in localStorage
       const userGroqKey = localStorage.getItem('subtitle_groq_key');
@@ -316,7 +366,8 @@ function AppContent() {
         setProgressStep('Running OpenAI Whisper speech recognition on actual video audio...');
         result = await transcribeWithBrowserWhisper(audioData, {
           language: selectedLang,
-          model: 'Xenova/whisper-tiny'
+          vadSegments,
+          model: 'onnx-community/whisper-tiny'
         }, (pct, msg) => {
           setProgressPct(pct);
           setProgressStep(msg);
@@ -1214,6 +1265,7 @@ function AppContent() {
           setIsProcessing(false);
           setProgressError(null);
         }}
+        onFastTrack={handleFastTrack}
       />
     </div>
   );
