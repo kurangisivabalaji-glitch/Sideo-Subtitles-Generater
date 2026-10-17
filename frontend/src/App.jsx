@@ -1189,6 +1189,16 @@ function AppContent() {
                           const updated = currentDisplaySegments.map(s => s.id === id ? { ...s, text: txt } : s);
                           updateSegmentsWithHistory(updated);
                         }}
+                        onRenameSpeaker={(oldName, newName) => {
+                          const updated = currentDisplaySegments.map(s => {
+                            const spk = s.speaker || (s.id % 2 === 0 ? 'Speaker 2' : 'Speaker 1');
+                            if (spk === oldName) {
+                              return { ...s, speaker: newName };
+                            }
+                            return s;
+                          });
+                          updateSegmentsWithHistory(updated);
+                        }}
                         isRtl={styleOptions.isRtl}
                         languageName={detectedLanguage}
                         activeTrack={activeTrack}
