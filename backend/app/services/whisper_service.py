@@ -116,6 +116,29 @@ COMMON_SPELLING_FIXES = [
     (r"\bteh\b", "the"),
     (r"\bwhta\b", "what"),
     
+    # English Grammar: Pronouns, Contractions & Common Slips
+    (r"\bi\b", "I"),
+    (r"\b(?:im|i'm)\b", "I'm"),
+    (r"\b(?:dont|don't)\b", "don't"),
+    (r"\b(?:cant|can't)\b", "can't"),
+    (r"\b(?:wont|won't)\b", "won't"),
+    (r"\b(?:didnt|didn't)\b", "didn't"),
+    (r"\b(?:doesnt|doesn't)\b", "doesn't"),
+    (r"\b(?:isnt|isn't)\b", "isn't"),
+    (r"\b(?:arent|aren't)\b", "aren't"),
+    (r"\b(?:wasnt|wasn't)\b", "wasn't"),
+    (r"\b(?:werent|weren't)\b", "weren't"),
+    (r"\b(?:youre|you're)\b", "you're"),
+    (r"\b(?:theyre|they're)\b", "they're"),
+    (r"\b(?:weve|we've)\b", "we've"),
+    (r"\b(?:youve|you've)\b", "you've"),
+    (r"\b(?:theyve|they've)\b", "they've"),
+    (r"\bcould of\b", "could have"),
+    (r"\bshould of\b", "should have"),
+    (r"\bwould of\b", "would have"),
+    (r"\btheir is\b", "there is"),
+    (r"\btheir are\b", "there are"),
+    
     # Telugu phonetic code-switching corrections when rendered in Latin or transliterated
     (r"\bnaino\b", "nenu"),
     (r"\bharita\b", "Haritha"),
@@ -124,20 +147,40 @@ COMMON_SPELLING_FIXES = [
     (r"\bhai\b", "Hi"),
     (r"\bnamaskaram\b", "Namaskaram"),
     (r"\bdhanyavadalu\b", "Dhanyavadalu"),
+    (r"\bbagunara\b", "bagunnara"),
+    (r"\bchesko\b", "chesuko"),
+    (r"\bmatladtharu\b", "matladatharu"),
+    (r"\bkanipisthundi\b", "kanipistundi"),
+    (r"\bchoodandi\b", "chudandi"),
+    (r"\bavuthundi\b", "avutundi"),
+    (r"\bendhuku\b", "enduku"),
+    (r"\beppudu\b", "ippudu"),
 ]
 
 def correct_common_spelling_mistakes(text: str, lang: Optional[str] = None) -> str:
-    """Correct frequent phonetic slips, technical terms, and common typos."""
+    """Correct frequent phonetic slips, grammar errors, technical terms, and punctuation."""
     if not text:
         return text
 
-    corrected = text
+    corrected = text.strip()
+
+    # 1. Remove duplicate adjacent words (e.g., "the the" -> "the")
+    corrected = re.sub(r'\b(\w+)\s+\1\b', r'\1', corrected, flags=re.IGNORECASE)
+
+    # 2. Apply grammar and spelling rules
     for pattern, replacement in COMMON_SPELLING_FIXES:
         corrected = re.sub(pattern, replacement, corrected, flags=re.IGNORECASE)
 
-    # Clean double spaces and punctuation spacing
+    # 3. Clean double spaces and punctuation spacing
     corrected = re.sub(r'\s+', ' ', corrected)
     corrected = re.sub(r'\s+([,.:;?!])', r'\1', corrected)
+    corrected = re.sub(r'([,.:;?!])([^\s\d"\'”’\)\]])', r'\1 \2', corrected)
+
+    # 4. Sentence capitalization for Latin scripts
+    if corrected and not re.match(r'^[^\x00-\x7F]', corrected):
+        corrected = corrected[0].upper() + corrected[1:]
+        corrected = re.sub(r'([.?!]\s+)([a-z])', lambda m: m.group(1) + m.group(2).upper(), corrected)
+
     return corrected.strip()
 
 def format_and_diarize_segments(raw_segments: List[Dict[str, Any]], max_chars_per_line: int = 48, lang: Optional[str] = None) -> List[Dict[str, Any]]:

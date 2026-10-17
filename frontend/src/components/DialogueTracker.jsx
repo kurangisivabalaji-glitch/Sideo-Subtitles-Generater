@@ -59,23 +59,75 @@ export function DialogueTracker({
   const isUserScrollingRef = useRef(false);
   const scrollTimeoutRef = useRef(null);
 
-  // Find active segment with gap bridging (tolerant within +0.35s)
-  const activeSegmentIndex = (() => {
-    if (!segments || segments.length === 0) return -1;
+  // Context-aware dialogue resolver with intelligent gap bridging & upcoming preview
+  const { activeSegment, activeSegmentIndex, nextSegment, isPauseGap, isBeforeSpeech, pauseDurationRemaining } = (() => {
+    if (!segments || segments.length === 0) {
+      return { activeSegment: null, activeSegmentIndex: -1, nextSegment: null, isPauseGap: false, isBeforeSpeech: false, pauseDurationRemaining: 0 };
+    }
+
+    // 1. Direct match within start and end
     let idx = segments.findIndex(
       seg => currentTime >= parseFloat(seg.start) && currentTime <= parseFloat(seg.end)
     );
-    if (idx === -1) {
-      idx = segments.findIndex(
-        seg => currentTime >= parseFloat(seg.end) && currentTime <= (parseFloat(seg.end) + 0.35)
-      );
+
+    // 2. Playhead is before the very first segment
+    if (idx === -1 && currentTime < parseFloat(segments[0].start)) {
+      const waitTime = parseFloat((parseFloat(segments[0].start) - currentTime).toFixed(1));
+      return {
+        activeSegment: segments[0],
+        activeSegmentIndex: 0,
+        nextSegment: segments.length > 1 ? segments[1] : null,
+        isPauseGap: false,
+        isBeforeSpeech: true,
+        pauseDurationRemaining: waitTime
+      };
     }
-    return idx;
+
+    // 3. Playhead is within a gap between two segments
+    if (idx === -1) {
+      for (let i = 0; i < segments.length - 1; i++) {
+        const segEnd = parseFloat(segments[i].end);
+        const nextStart = parseFloat(segments[i + 1].start);
+        if (currentTime >= segEnd && currentTime <= nextStart) {
+          const waitTime = parseFloat((nextStart - currentTime).toFixed(1));
+          return {
+            activeSegment: segments[i],
+            activeSegmentIndex: i,
+            nextSegment: segments[i + 1],
+            isPauseGap: true,
+            isBeforeSpeech: false,
+            pauseDurationRemaining: waitTime
+          };
+        }
+      }
+    }
+
+    // 4. Playhead is past the last segment
+    if (idx === -1 && currentTime > parseFloat(segments[segments.length - 1].end)) {
+      const lastIdx = segments.length - 1;
+      return {
+        activeSegment: segments[lastIdx],
+        activeSegmentIndex: lastIdx,
+        nextSegment: null,
+        isPauseGap: false,
+        isBeforeSpeech: false,
+        pauseDurationRemaining: 0
+      };
+    }
+
+    // Direct active segment
+    const curSeg = idx !== -1 ? segments[idx] : null;
+    const nxtSeg = idx !== -1 && idx + 1 < segments.length ? segments[idx + 1] : null;
+
+    return {
+      activeSegment: curSeg,
+      activeSegmentIndex: idx,
+      nextSegment: nxtSeg,
+      isPauseGap: false,
+      isBeforeSpeech: false,
+      pauseDurationRemaining: 0
+    };
   })();
-  const activeSegment = activeSegmentIndex !== -1 ? segments[activeSegmentIndex] : null;
-  const nextSegment = activeSegmentIndex !== -1 && activeSegmentIndex + 1 < segments.length 
-    ? segments[activeSegmentIndex + 1] 
-    : null;
 
   // Calculate percentage of progress through the current dialogue
   let dialogueProgress = 0;
@@ -311,13 +363,23 @@ export function DialogueTracker({
         }}>
           {activeSegment ? (
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '0.78rem', color: '#a5b4fc' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '0.78rem', color: '#a5b4fc', flexWrap: 'wrap', gap: '6px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                   <span style={{ fontWeight: 700, color: '#67e8f9' }}>
                     {activeSegment.speaker || `Speaker ${activeSegmentIndex % 2 === 0 ? 1 : 2}`}
                   </span>
                   <span style={{ color: 'var(--text-muted)' }}>•</span>
                   <span>Dialogue #{activeSegmentIndex + 1} of {segments.length}</span>
+                  {isBeforeSpeech && (
+                    <span className="badge badge-cyan" style={{ fontSize: '0.68rem', padding: '2px 7px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                      ▶️ Starts in {pauseDurationRemaining}s
+                    </span>
+                  )}
+                  {isPauseGap && (
+                    <span className="badge badge-purple" style={{ fontSize: '0.68rem', padding: '2px 7px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                      ⏸️ Speech Pause ({pauseDurationRemaining}s)
+                    </span>
+                  )}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ fontFamily: 'var(--font-mono)' }}>
@@ -327,10 +389,21 @@ export function DialogueTracker({
                     onClick={() => onSeek(activeSegment.start, true)}
                     className="btn btn-soft-cyan"
                     style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '4px' }}
-                    title="Replay this line"
+                    title={isBeforeSpeech ? "Start playback from opening speech" : "Replay this line"}
                   >
-                    <RotateCcw size={11} /> Replay
+                    {isBeforeSpeech ? <Play size={11} fill="currentColor" /> : <RotateCcw size={11} />}
+                    <span>{isBeforeSpeech ? 'Play' : 'Replay'}</span>
                   </button>
+                  {isPauseGap && nextSegment && (
+                    <button
+                      onClick={() => onSeek(nextSegment.start, true)}
+                      className="btn btn-soft-emerald"
+                      style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '4px' }}
+                      title="Skip pause to next dialogue line"
+                    >
+                      <span>Skip Pause ⏩</span>
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -395,8 +468,8 @@ export function DialogueTracker({
               </div>
             </div>
           ) : (
-            <div style={{ color: 'var(--text-muted)', fontSize: '0.88rem', fontStyle: 'italic', textAlign: 'center', padding: '8px 0' }}>
-              No speech dialogue at current playhead position ({formatDisplayTime(currentTime)})
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.88rem', fontStyle: 'italic', textAlign: 'center', padding: '12px 0' }}>
+              ✨ No dialogue segments loaded. Click "Add Dialogue" or upload video with speech.
             </div>
           )}
         </div>
