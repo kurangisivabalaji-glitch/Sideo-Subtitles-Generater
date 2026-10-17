@@ -469,21 +469,23 @@ export function VideoPlayer({
               color: txtColor,
               background: bgCss, // Transparent by default, NO black background!
               textShadow: textShadowCss, // Crisp outline legible over any scene
-              padding: styleOptions?.bgStyle === 'box' ? '6px 16px' : '2px 6px',
-              borderRadius: '6px',
-              maxWidth: '92%',
+              padding: styleOptions?.bgStyle === 'box' ? '8px 18px' : '4px 10px',
+              borderRadius: '8px',
+              maxWidth: '90%',
               textAlign: 'center',
-              lineHeight: 1.4,
+              lineHeight: 1.6,
               fontWeight: 700,
-              letterSpacing: '0.01em',
+              letterSpacing: '0.015em',
               direction: styleOptions?.isRtl ? 'rtl' : 'ltr',
               wordBreak: 'break-word',
-              whiteSpace: 'pre-line',
+              overflowWrap: 'break-word',
+              whiteSpace: 'normal',
+              boxSizing: 'border-box',
               transition: 'all 0.08s ease'
             }}>
               {(() => {
                 const rawText = activeSegment.text || '';
-                const words = rawText.split(' ');
+                const words = rawText.split(/\s+/).filter(Boolean);
                 if (words.length <= 1) return rawText;
 
                 // 1. Try exact word-level timestamp array from Whisper
@@ -514,14 +516,15 @@ export function VideoPlayer({
                     <span
                       key={wIdx}
                       style={{
-                        margin: '0 3px',
+                        margin: '0 4px',
                         display: 'inline-block',
+                        verticalAlign: 'baseline',
                         color: isCurrentWord ? '#22d3ee' : txtColor,
                         opacity: isCurrentWord ? 1 : (isSpoken ? 1 : 0.88),
                         textShadow: isCurrentWord 
                           ? '0 0 14px rgba(34, 211, 238, 0.95), -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000' 
                           : textShadowCss,
-                        transform: isCurrentWord ? 'scale(1.05)' : 'scale(1)',
+                        transform: isCurrentWord ? 'scale(1.04)' : 'scale(1)',
                         transition: 'all 0.08s ease'
                       }}
                     >
