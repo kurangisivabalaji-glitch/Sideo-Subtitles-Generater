@@ -37,6 +37,7 @@ import { extractAudioFromVideo, transcribeWithBrowserWhisper, transcribeWithGroq
 import { isLanguageRtl, getLanguageName, getLanguageDetails } from './utils/languages';
 import { formatPreciseTime } from './utils/timeUtils';
 import { API_BASE, WS_BASE } from './utils/apiConfig';
+import { fixAllSubtitleSegments } from './utils/spellChecker';
 
 function AppContent() {
   const { user, token, loading, authFetch } = useAuth();
@@ -166,7 +167,8 @@ function AppContent() {
     setCurrentJobId(job.id);
 
     const origSubtitle = (job.subtitles || []).find(s => s.track_type === 'original') || (job.subtitles && job.subtitles[0]);
-    const segments = origSubtitle?.segments || [];
+    const rawSegments = origSubtitle?.segments || [];
+    const segments = fixAllSubtitleSegments(rawSegments, origSubtitle?.language_code);
     setOriginalSegments(segments);
     setHistory([segments]);
     setHistoryIndex(0);
@@ -534,7 +536,8 @@ function AppContent() {
                   setIsProcessing(false);
                   const res = job.result;
 
-                  const initialSegments = res.segments || [];
+                  const rawSegments = res.segments || [];
+                  const initialSegments = fixAllSubtitleSegments(rawSegments, res.language);
                   setOriginalSegments(initialSegments);
                   const langInfo = getLanguageDetails(res.language || res.language_name);
                   const displayLang = res.language_native && res.language_native !== res.language_name 
@@ -585,7 +588,8 @@ function AppContent() {
       const job = await res.json();
       setIsProcessing(false);
       const origSubtitle = (job.subtitles || []).find(s => s.track_type === 'original') || job.subtitles[0];
-      const segments = origSubtitle?.segments || [];
+      const rawSegments = origSubtitle?.segments || [];
+      const segments = fixAllSubtitleSegments(rawSegments, origSubtitle?.language_code);
       setOriginalSegments(segments);
       const langInfo = getLanguageDetails(origSubtitle?.language_name || job.detected_language);
       setDetectedLanguage(langInfo.displayLabel);

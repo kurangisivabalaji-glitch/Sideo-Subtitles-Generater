@@ -370,6 +370,12 @@ export function DialogueTracker({
                   </span>
                   <span style={{ color: 'var(--text-muted)' }}>•</span>
                   <span>Dialogue #{activeSegmentIndex + 1} of {segments.length}</span>
+                  {!isBeforeSpeech && !isPauseGap && (
+                    <span className="badge badge-emerald" style={{ fontSize: '0.68rem', padding: '2px 8px', display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: 700 }}>
+                      <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', display: 'inline-block', boxShadow: '0 0 6px #10b981' }}></span>
+                      Live Voice
+                    </span>
+                  )}
                   {isBeforeSpeech && (
                     <span className="badge badge-cyan" style={{ fontSize: '0.68rem', padding: '2px 7px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
                       ▶️ Starts in {pauseDurationRemaining}s
@@ -377,7 +383,7 @@ export function DialogueTracker({
                   )}
                   {isPauseGap && (
                     <span className="badge badge-purple" style={{ fontSize: '0.68rem', padding: '2px 7px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                      ⏸️ Speech Pause ({pauseDurationRemaining}s)
+                      ⏸️ Pause ({pauseDurationRemaining}s)
                     </span>
                   )}
                 </div>
@@ -407,24 +413,29 @@ export function DialogueTracker({
                 </div>
               </div>
 
-              {/* Word-by-word karaoke tracking in HUD */}
+              {/* Word-by-word karaoke tracking in HUD - Strictly tracks running voice */}
               <div style={{
                 fontFamily: isRtl ? 'Tahoma, Arial' : 'inherit',
                 direction: isRtl ? 'rtl' : 'ltr',
                 fontSize: '1.08rem',
                 fontWeight: 600,
-                color: '#ffffff',
+                color: isPauseGap ? 'rgba(255, 255, 255, 0.75)' : '#ffffff',
                 lineHeight: 1.55,
                 wordBreak: 'break-word'
               }}>
                 {(() => {
                   const rawText = activeSegment.text || '';
-                  const words = rawText.split(' ');
+                  const words = rawText.split(/\s+/).filter(Boolean);
                   if (words.length <= 1) return rawText;
-                  const segDur = Math.max(0.01, activeSegment.end - activeSegment.start);
-                  const elapsed = Math.max(0, currentTime - activeSegment.start);
-                  const ratio = Math.min(1, elapsed / segDur);
-                  const activeWordIdx = Math.min(words.length - 1, Math.floor(ratio * words.length));
+
+                  let activeWordIdx = -1;
+                  // Only highlight active word while voice is actively running (not during pause gaps)
+                  if (!isPauseGap && !isBeforeSpeech) {
+                    const segDur = Math.max(0.01, activeSegment.end - activeSegment.start);
+                    const elapsed = Math.max(0, currentTime - activeSegment.start);
+                    const ratio = Math.min(1, elapsed / segDur);
+                    activeWordIdx = Math.min(words.length - 1, Math.floor(ratio * words.length));
+                  }
 
                   return words.map((w, wIdx) => {
                     const isCurrentWord = wIdx === activeWordIdx;

@@ -104,25 +104,12 @@ export function VideoPlayer({
     }
 
     const time = currentTime;
-    // 1. Direct timestamp match
-    let idx = segments.findIndex(seg => {
+    // Strict voice tracking: Subtitles appear ONLY while the speaker's voice is actively running
+    const idx = segments.findIndex(seg => {
       const s = parseFloat(seg.start);
       const e = parseFloat(seg.end);
       return time >= s && time <= e;
     });
-
-    // 2. Small gap hold (< 0.4s) to prevent flicker between speech pauses
-    if (idx === -1) {
-      idx = segments.findIndex(seg => {
-        const e = parseFloat(seg.end);
-        return time >= e && time <= (e + 0.4);
-      });
-    }
-
-    // 3. At start of video (within 1s before segment 0), display segment 0 ready
-    if (idx === -1 && segments.length > 0 && time <= parseFloat(segments[0].start) && parseFloat(segments[0].start) - time <= 1.0) {
-      idx = 0;
-    }
 
     if (idx !== -1) {
       return { segment: segments[idx], index: idx };
