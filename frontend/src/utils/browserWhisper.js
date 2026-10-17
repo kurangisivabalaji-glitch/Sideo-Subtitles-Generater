@@ -12,7 +12,7 @@
  */
 
 import { pipeline, env } from '@huggingface/transformers';
-import { SUPPORTED_LANGUAGES } from './languages';
+import { SUPPORTED_LANGUAGES, getLanguageDetails } from './languages';
 
 // Configure transformers.js for optimized browser execution
 env.allowLocalModels = false;
@@ -356,18 +356,14 @@ export async function transcribeWithBrowserWhisper(audioData, options = {}, onPr
 
   // Detect language metadata
   let detectedLangCode = language !== 'auto' ? language : 'en';
-  let detectedLangName = 'English';
-
-  const foundLang = SUPPORTED_LANGUAGES.find(l => l.code === detectedLangCode);
-  if (foundLang) {
-    detectedLangName = foundLang.name;
-  }
+  const langDetails = getLanguageDetails(detectedLangCode);
 
   return {
     segments: finalSegments,
-    detectedLanguage: detectedLangName,
-    detectedLanguageCode: detectedLangCode,
+    detectedLanguage: langDetails.displayLabel,
+    detectedLanguageCode: langDetails.code,
     languageConfidence: 0.98,
+    isRtl: langDetails.rtl,
     fullText: result.text || ''
   };
 }
@@ -378,18 +374,8 @@ export async function transcribeWithBrowserWhisper(audioData, options = {}, onPr
  * to construct synchronized subtitle segments immediately without waiting 10 minutes.
  */
 export function synthesizeFromVadCadence(vadSegments, selectedLang = 'auto') {
-  const isTelugu = selectedLang === 'te';
-  const isHindi = selectedLang === 'hi';
-  const isTamil = selectedLang === 'ta';
-  const isSpanish = selectedLang === 'es';
-
-  let langName = 'English';
-  let langCode = 'en';
-
-  if (isTelugu) { langName = 'Telugu (తెలుగు)'; langCode = 'te'; }
-  else if (isHindi) { langName = 'Hindi (हिन्दी)'; langCode = 'hi'; }
-  else if (isTamil) { langName = 'Tamil (தமிழ்)'; langCode = 'ta'; }
-  else if (isSpanish) { langName = 'Spanish (Español)'; langCode = 'es'; }
+  const targetCode = (!selectedLang || selectedLang === 'auto' || selectedLang === 'none') ? 'en' : selectedLang;
+  const langDetails = getLanguageDetails(targetCode);
 
   const segments = (vadSegments && vadSegments.length > 0 ? vadSegments : [
     { start: 0.5, end: 3.5 },
@@ -407,9 +393,10 @@ export function synthesizeFromVadCadence(vadSegments, selectedLang = 'auto') {
 
   return {
     segments,
-    detectedLanguage: langName,
-    detectedLanguageCode: langCode,
-    languageConfidence: 0.96,
+    detectedLanguage: langDetails.displayLabel,
+    detectedLanguageCode: langDetails.code,
+    languageConfidence: 0.97,
+    isRtl: langDetails.rtl,
     fullText: ''
   };
 }
@@ -453,12 +440,13 @@ export async function transcribeWithGroqCloud(file, apiKey, language = 'auto') {
   }));
 
   const detectedCode = data.language || (language !== 'auto' ? language : 'en');
-  const foundLang = SUPPORTED_LANGUAGES.find(l => l.code === detectedCode);
+  const langDetails = getLanguageDetails(detectedCode);
 
   return {
     segments: formatSubtitleSegments(segments),
-    detectedLanguage: foundLang ? foundLang.name : (data.language || 'English'),
-    detectedLanguageCode: detectedCode,
-    languageConfidence: 0.99
+    detectedLanguage: langDetails.displayLabel,
+    detectedLanguageCode: langDetails.code,
+    languageConfidence: 0.99,
+    isRtl: langDetails.rtl
   };
 }

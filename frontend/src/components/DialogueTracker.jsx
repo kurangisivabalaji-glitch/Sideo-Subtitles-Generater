@@ -11,9 +11,11 @@ import {
   Eye,
   EyeOff,
   LocateFixed,
-  Radio
+  Radio,
+  Globe
 } from 'lucide-react';
 import { formatDisplayTime, formatPreciseTime } from '../utils/timeUtils';
+import { getLanguageDetails } from '../utils/languages';
 
 export function DialogueTracker({
   segments = [],
@@ -131,16 +133,22 @@ export function DialogueTracker({
             <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-main)' }}>
               Live Dialogue Tracking
             </span>
+            {languageName && (
+              <span className="badge badge-cyan" style={{ fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <Globe size={11} color="#06b6d4" />
+                <span>{getLanguageDetails(languageName).displayLabel}</span>
+              </span>
+            )}
             {activeSegment && (
-              <span className="badge badge-cyan" style={{ fontSize: '0.72rem' }}>
+              <span className="badge badge-emerald" style={{ fontSize: '0.72rem' }}>
                 <span style={{
                   width: '6px',
                   height: '6px',
                   borderRadius: '50%',
-                  background: '#22d3ee',
+                  background: '#34d399',
                   display: 'inline-block',
                   marginRight: '4px',
-                  boxShadow: '0 0 8px #22d3ee'
+                  boxShadow: '0 0 8px #34d399'
                 }} />
                 Speaking Now
               </span>
@@ -365,7 +373,9 @@ export function DialogueTracker({
         ) : (
           filteredSegments.map((seg, idx) => {
             const isActive = currentTime >= seg.start && currentTime <= seg.end;
-            const speakerNum = (idx % 2 === 0) ? 1 : 2;
+            const speakerLabel = seg.speaker || `Speaker ${(idx % 2 === 0) ? 1 : 2}`;
+            const speakerCode = speakerLabel.includes('2') ? 'S2' : 'S1';
+            const speakerNum = speakerLabel.includes('2') ? 2 : 1;
 
             return (
               <div
@@ -401,7 +411,7 @@ export function DialogueTracker({
                   fontSize: '0.8rem',
                   fontWeight: 700
                 }}>
-                  {speakerNum === 1 ? 'S1' : 'S2'}
+                  {speakerCode}
                 </div>
 
                 {/* Content body */}
@@ -414,7 +424,7 @@ export function DialogueTracker({
                         fontWeight: 700,
                         color: isActive ? '#67e8f9' : 'var(--text-secondary)'
                       }}>
-                        Speaker {speakerNum}
+                        {speakerLabel}
                       </span>
                       <span style={{
                         fontSize: '0.74rem',

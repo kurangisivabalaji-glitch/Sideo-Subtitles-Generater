@@ -34,7 +34,7 @@ import { ExportModal } from './components/ExportModal';
 import { ProgressModal } from './components/ProgressModal';
 import { LiveVoiceAutoTracker } from './components/LiveVoiceAutoTracker';
 import { extractAudioFromVideo, transcribeWithBrowserWhisper, transcribeWithGroqCloud, synthesizeFromVadCadence } from './utils/browserWhisper';
-import { isLanguageRtl, getLanguageName } from './utils/languages';
+import { isLanguageRtl, getLanguageName, getLanguageDetails } from './utils/languages';
 import { formatPreciseTime } from './utils/timeUtils';
 import { API_BASE, WS_BASE } from './utils/apiConfig';
 
@@ -532,10 +532,14 @@ function AppContent() {
 
                   const initialSegments = res.segments || [];
                   setOriginalSegments(initialSegments);
-                  setDetectedLanguage(res.language_name || res.language);
+                  const langInfo = getLanguageDetails(res.language || res.language_name);
+                  const displayLang = res.language_native && res.language_native !== res.language_name 
+                    ? `${res.language_name} (${res.language_native})` 
+                    : (res.language_name ? `${res.language_name}` : langInfo.displayLabel);
+                  setDetectedLanguage(displayLang);
                   setDetectedLanguageConfidence(res.language_probability || 0.99);
                   
-                  const rtl = res.is_rtl || isLanguageRtl(res.language);
+                  const rtl = res.is_rtl || langInfo.rtl || isLanguageRtl(res.language);
                   setStyleOptions(prev => ({ ...prev, isRtl: rtl }));
 
                   setHistory([initialSegments]);
@@ -579,7 +583,8 @@ function AppContent() {
       const origSubtitle = (job.subtitles || []).find(s => s.track_type === 'original') || job.subtitles[0];
       const segments = origSubtitle?.segments || [];
       setOriginalSegments(segments);
-      setDetectedLanguage(origSubtitle?.language_name || job.detected_language);
+      const langInfo = getLanguageDetails(origSubtitle?.language_name || job.detected_language);
+      setDetectedLanguage(langInfo.displayLabel);
       setDetectedLanguageConfidence(job.language_confidence || 0.99);
 
       // Load all translated subtitle tracks

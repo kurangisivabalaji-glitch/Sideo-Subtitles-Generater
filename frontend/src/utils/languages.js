@@ -39,16 +39,64 @@ export const SUPPORTED_LANGUAGES = [
   { code: 'fi', name: 'Finnish', native: 'Suomi', rtl: false, flag: '🇫🇮' },
   { code: 'no', name: 'Norwegian', native: 'Norsk', rtl: false, flag: '🇳🇴' },
   { code: 'ms', name: 'Malay', native: 'Bahasa Melayu', rtl: false, flag: '🇲🇾' },
+  { code: 'tl', name: 'Tagalog / Filipino', native: 'Filipino', rtl: false, flag: '🇵🇭' },
+  { code: 'ne', name: 'Nepali', native: 'नेपाली', rtl: false, flag: '🇳🇵' },
+  { code: 'si', name: 'Sinhala', native: 'සිංහල', rtl: false, flag: '🇱🇰' },
+  { code: 'my', name: 'Burmese', native: 'မြန်မာ', rtl: false, flag: '🇲🇲' },
+  { code: 'km', name: 'Khmer', native: 'ខ្មែរ', rtl: false, flag: '🇰🇭' },
+  { code: 'am', name: 'Amharic', native: 'አማርኛ', rtl: false, flag: '🇪🇹' },
+  { code: 'sw', name: 'Swahili', native: 'Kiswahili', rtl: false, flag: '🇰🇪' },
+  { code: 'as', name: 'Assamese', native: 'অসমীয়া', rtl: false, flag: '🇮🇳' },
+  { code: 'or', name: 'Odia', native: 'ଓଡ଼ିଆ', rtl: false, flag: '🇮🇳' },
+  { code: 'sa', name: 'Sanskrit', native: 'संस्कृतम्', rtl: false, flag: '🇮🇳' },
+  { code: 'af', name: 'Afrikaans', native: 'Afrikaans', rtl: false, flag: '🇿🇦' },
+  { code: 'ca', name: 'Catalan', native: 'Català', rtl: false, flag: '🇪🇸' },
+  { code: 'hr', name: 'Croatian', native: 'Hrvatski', rtl: false, flag: '🇭🇷' },
+  { code: 'sr', name: 'Serbian', native: 'Српски', rtl: false, flag: '🇷🇸' },
+  { code: 'bg', name: 'Bulgarian', native: 'Български', rtl: false, flag: '🇧🇬' },
+  { code: 'sk', name: 'Slovak', native: 'Slovenčina', rtl: false, flag: '🇸🇰' },
+  { code: 'sl', name: 'Slovenian', native: 'Slovenščina', rtl: false, flag: '🇸🇮' },
+  { code: 'lt', name: 'Lithuanian', native: 'Lietuvių', rtl: false, flag: '🇱🇹' },
+  { code: 'lv', name: 'Latvian', native: 'Latviešu', rtl: false, flag: '🇱🇻' },
+  { code: 'et', name: 'Estonian', native: 'Eesti', rtl: false, flag: '🇪🇪' }
 ];
+
+export function getLanguageDetails(codeOrName) {
+  if (!codeOrName) return { code: 'en', name: 'English', native: 'English', rtl: false, flag: '🌐', displayLabel: 'English' };
+  const lower = String(codeOrName).toLowerCase().trim();
+
+  const found = SUPPORTED_LANGUAGES.find(l => 
+    l.code.toLowerCase() === lower || 
+    l.name.toLowerCase() === lower || 
+    lower.startsWith(l.name.toLowerCase()) ||
+    (l.native && lower.includes(l.native.toLowerCase()))
+  );
+
+  if (found) {
+    const displayLabel = found.native && found.native !== found.name 
+      ? `${found.name} (${found.native})` 
+      : found.name;
+    return { ...found, displayLabel };
+  }
+
+  return {
+    code: lower,
+    name: codeOrName,
+    native: codeOrName,
+    rtl: false,
+    flag: '🌐',
+    displayLabel: codeOrName
+  };
+}
 
 export function getLanguageName(code) {
   if (!code) return 'Unknown';
-  const found = SUPPORTED_LANGUAGES.find(l => l.code.toLowerCase() === code.toLowerCase());
-  return found ? found.name : code.toUpperCase();
+  const details = getLanguageDetails(code);
+  return details.displayLabel;
 }
 
 export function isLanguageRtl(code) {
   if (!code) return false;
-  const found = SUPPORTED_LANGUAGES.find(l => l.code.toLowerCase() === code.toLowerCase());
-  return found ? found.rtl : false;
+  const details = getLanguageDetails(code);
+  return details.rtl;
 }

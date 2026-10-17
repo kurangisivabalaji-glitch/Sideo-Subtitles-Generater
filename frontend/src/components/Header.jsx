@@ -1,8 +1,9 @@
 import React from 'react';
 import { Sparkles, Globe, Film, RefreshCw, Layers } from 'lucide-react';
-import { SUPPORTED_LANGUAGES } from '../utils/languages';
+import { SUPPORTED_LANGUAGES, getLanguageDetails } from '../utils/languages';
 
 export function Header({ hasVideo, onReset, activeTrack, detectedLanguage, confidence, onOverrideLanguage }) {
+  const langDetails = detectedLanguage ? getLanguageDetails(detectedLanguage) : null;
   return (
     <header style={{
       display: 'flex',
@@ -77,20 +78,21 @@ export function Header({ hasVideo, onReset, activeTrack, detectedLanguage, confi
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            padding: '4px 12px',
+            padding: '5px 14px',
             borderRadius: 'var(--radius-full)',
-            background: 'rgba(6, 182, 212, 0.12)',
+            background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.15) 0%, rgba(99, 102, 241, 0.15) 100%)',
             border: '1px solid rgba(6, 182, 212, 0.45)',
-            fontSize: '0.82rem',
+            fontSize: '0.84rem',
             boxShadow: '0 0 15px rgba(6, 182, 212, 0.2)'
           }}>
-            <Globe size={14} color="#06b6d4" />
-            <span style={{ color: '#67e8f9', fontWeight: 700 }}>
-              Spoken: {detectedLanguage}
+            <Globe size={15} color="#06b6d4" />
+            <span style={{ color: '#67e8f9', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span>{langDetails?.flag || '🌐'}</span>
+              <span>Spoken: {langDetails?.displayLabel || detectedLanguage}</span>
             </span>
             {confidence && (
-              <span style={{ color: '#a5f3fc', fontSize: '0.74rem', fontWeight: 600 }}>
-                • {Math.round(confidence * 100)}% match
+              <span className="badge badge-cyan" style={{ fontSize: '0.72rem', padding: '2px 7px', fontWeight: 700 }}>
+                {Math.round(confidence * 100)}% Match
               </span>
             )}
             

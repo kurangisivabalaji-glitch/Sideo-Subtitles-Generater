@@ -60,8 +60,62 @@ LANGUAGE_METADATA: Dict[str, Dict[str, Any]] = {
     "km": {"name": "Khmer", "native": "ខ្មែរ", "rtl": False},
     "am": {"name": "Amharic", "native": "አማርኛ", "rtl": False},
     "sw": {"name": "Swahili", "native": "Kiswahili", "rtl": False},
-    "sa": {"name": "Sanskrit", "native": "संस्कृतम्", "rtl": False},
+    "tl": {"name": "Tagalog / Filipino", "native": "Filipino", "rtl": False},
+    "as": {"name": "Assamese", "native": "অসমীয়া", "rtl": False},
+    "or": {"name": "Odia", "native": "ଓଡ଼ିଆ", "rtl": False},
+    "af": {"name": "Afrikaans", "native": "Afrikaans", "rtl": False},
+    "ca": {"name": "Catalan", "native": "Català", "rtl": False},
+    "hr": {"name": "Croatian", "native": "Hrvatski", "rtl": False},
+    "sr": {"name": "Serbian", "native": "Српски", "rtl": False},
+    "bg": {"name": "Bulgarian", "native": "Български", "rtl": False},
+    "sk": {"name": "Slovak", "native": "Slovenčina", "rtl": False},
+    "sl": {"name": "Slovenian", "native": "Slovenščina", "rtl": False},
+    "lt": {"name": "Lithuanian", "native": "Lietuvių", "rtl": False},
+    "lv": {"name": "Latvian", "native": "Latviešu", "rtl": False},
+    "et": {"name": "Estonian", "native": "Eesti", "rtl": False},
 }
+
+def format_and_diarize_segments(raw_segments: List[Dict[str, Any]], max_chars_per_line: int = 48) -> List[Dict[str, Any]]:
+    """
+    Apply speaker alternation based on natural speech pauses (> 1.6s)
+    and format readable sentence breaks respecting punctuation and script conventions.
+    """
+    formatted = []
+    current_speaker = 1
+    last_end = 0.0
+
+    for idx, seg in enumerate(raw_segments):
+        text = str(seg.get("text", "")).strip()
+        if not text:
+            continue
+
+        start = float(seg.get("start", 0.0))
+        end = float(seg.get("end", start + 1.0))
+
+        # Detect speaker change upon long pause (> 1.6 seconds)
+        if idx > 0 and (start - last_end) > 1.6:
+            current_speaker = 2 if current_speaker == 1 else 1
+        last_end = end
+
+        # Sentence / readable line break if text is longer than max_chars_per_line
+        if len(text) > max_chars_per_line and "\n" not in text:
+            # Prefer breaking at sentence punctuation: comma, period, question mark, dash, or whitespace
+            split_points = [m.start() for m in re.finditer(r'[,.?!;:—\s]', text)]
+            target = len(text) // 2
+            best_point = min(split_points, key=lambda p: abs(p - target)) if split_points else -1
+            if best_point > 8 and best_point < len(text) - 8:
+                text = text[:best_point].rstrip() + "\n" + text[best_point:].lstrip(",.?!;: \t")
+
+        formatted.append({
+            "id": idx + 1,
+            "start": round(start, 2),
+            "end": round(max(start + 0.8, end), 2),
+            "text": text,
+            "speaker": f"Speaker {current_speaker}",
+            "words": seg.get("words", [])
+        })
+
+    return formatted
 
 def get_whisper_model(model_name: str = DEFAULT_WHISPER_MODEL) -> WhisperModel:
     """Retrieve cached Whisper model or instantiate a new one."""
@@ -86,16 +140,8 @@ def transcribe_audio(
     progress_callback: Optional[Callable[[int, str], None]] = None
 ) -> Dict[str, Any]:
     """
-    Transcribe audio file using faster-whisper.
-    Returns:
-        {
-            "language": "te",
-            "language_name": "Telugu",
-            "language_probability": 0.98,
-            "segments": [
-                {"id": 1, "start": 0.0, "end": 2.5, "text": "నమస్కారం..."}
-            ]
-        }
+    Transcribe audio file using faster-whisper with automatic language detection,
+    timestamp synchronization, punctuation breaks, and speaker diarization.
     """
     if progress_callback:
         progress_callback(10, f"Loading AI model ({model_name})...")
@@ -128,11 +174,24 @@ def transcribe_audio(
         "rtl": False
     })
 
+    # Collect alternative candidate languages if available
+    alt_languages = []
+    if hasattr(info, "all_language_probs") and info.all_language_probs:
+        sorted_probs = sorted(info.all_language_probs, key=lambda x: x[1], reverse=True)[:5]
+        for l_code, l_prob in sorted_probs:
+            l_meta = LANGUAGE_METADATA.get(l_code, {"name": l_code.upper(), "native": l_code.upper()})
+            alt_languages.append({
+                "code": l_code,
+                "name": l_meta["name"],
+                "native": l_meta.get("native", l_meta["name"]),
+                "confidence": round(float(l_prob), 3)
+            })
+
     logger.info(f"Detected language: {detected_lang} ({lang_meta['name']}) with probability {info.language_probability:.2f}")
 
     audio_duration = total_duration or info.duration or 1.0
 
-    collected_segments = []
+    raw_segments = []
     seg_idx = 1
 
     for seg in segments_gen:
@@ -152,7 +211,7 @@ def transcribe_audio(
                         "probability": round(getattr(w, "probability", 1.0), 2)
                     })
 
-        collected_segments.append({
+        raw_segments.append({
             "id": seg_idx,
             "start": round(seg.start, 2),
             "end": round(seg.end, 2),
@@ -163,12 +222,14 @@ def transcribe_audio(
         if progress_callback and audio_duration > 0:
             # Scale progress between 30% and 92%
             pct = 30 + int((min(seg.end, audio_duration) / audio_duration) * 62)
-            progress_callback(min(pct, 92), f"Transcribing ({len(collected_segments)} segments captured)...")
+            progress_callback(min(pct, 92), f"Transcribing ({len(raw_segments)} dialogue segments captured)...")
 
         seg_idx += 1
 
     if progress_callback:
-        progress_callback(95, "Formatting synchronized subtitles...")
+        progress_callback(95, "Formatting synchronized subtitles & speaker tracks...")
+
+    formatted_segments = format_and_diarize_segments(raw_segments)
 
     return {
         "language": detected_lang,
@@ -176,6 +237,7 @@ def transcribe_audio(
         "language_native": lang_meta.get("native", lang_meta["name"]),
         "language_probability": round(info.language_probability, 3),
         "is_rtl": lang_meta.get("rtl", False),
+        "alternative_languages": alt_languages,
         "duration": round(audio_duration, 2),
-        "segments": collected_segments
+        "segments": formatted_segments
     }
